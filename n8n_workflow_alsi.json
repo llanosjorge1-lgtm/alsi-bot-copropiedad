@@ -1,0 +1,90 @@
+{
+  "name": "ALSI Copropiedad - Notificación Correo & Google Calendar Sync (Portada Norte VII)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "alsi-copropiedad-event",
+        "options": {}
+      },
+      "name": "1. Webhook Evento ALSI",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "event",
+        "calendar": {
+          "__rl": true,
+          "value": "primary",
+          "mode": "list"
+        },
+        "start": "={{ $json.startIso || $json.body?.startIso }}",
+        "end": "={{ $json.endIso || $json.body?.endIso }}",
+        "summary": "={{ $json.calendarSummary || $json.summary || $json.title || $json.body?.calendarSummary || $json.body?.summary || $json.body?.title || ('Reunión: ' + ($json.clientName || $json.body?.clientName || 'Residente') + ' - Depto ' + ($json.unitNumber || $json.body?.unitNumber || '00') + ' - Asunto: ' + ($json.meetingReason || $json.body?.meetingReason || 'Consulta Copropiedad')) }}",
+        "description": "={{ $json.calendarDescription || $json.body?.calendarDescription || ('Se ha coordinado una reunión con ' + ($json.clientName || $json.body?.clientName) + ' (Depto ' + ($json.unitNumber || $json.body?.unitNumber) + ')') }}",
+        "additionalFields": {
+          "attendees": [
+            "contactoalsiadministracion@gmail.com"
+          ]
+        }
+      },
+      "name": "2. Crear Evento en Google Calendar (ALSI)",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [
+        550,
+        200
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "google-calendar-cred-alsi",
+          "name": "Google Calendar ALSI Copropiedades"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "contactoalsiadministracion@gmail.com",
+        "toEmail": "contactoalsiadministracion@gmail.com",
+        "subject": "={{ $json.emailSubject || $json.body?.emailSubject || ('coordinación de reunión - ALSI Copropiedad: ' + ($json.clientName || $json.body?.clientName) + ' - Depto: ' + ($json.unitNumber || $json.body?.unitNumber) + ' - Asunto: ' + ($json.meetingReason || $json.body?.meetingReason)) }}",
+        "html": "=<h2>🏢✨ Nueva Reunión Coordinada - ALSI Copropiedad</h2><p>Estimada Administración ALSI (Portada Norte VII),</p><p>Se ha reservado de forma autónoma una reunión con las siguientes especificaciones:</p><ul><li><b>Condominio:</b> {{ $json.condoName || $json.body?.condoName || 'Condominio Portada Norte VII' }}</li><li><b>Residente / Copropietario:</b> {{ $json.clientName || $json.body?.clientName }}</li><li><b>Departamento:</b> {{ $json.unitNumber || $json.body?.unitNumber }}</li><li><b>Teléfono WhatsApp:</b> {{ $json.clientPhone || $json.body?.clientPhone }}</li><li><b>Asunto de la reunión:</b> {{ $json.meetingReason || $json.body?.meetingReason }}</li><li><b>Fecha y Hora Agendada:</b> {{ $json.dateTime || $json.body?.dateTime }}</li><li><b>ID Ticket / Solicitud:</b> {{ $json.ticketId || $json.body?.ticketId }}</li><li><b>Código Pase Digital QR:</b> {{ $json.voucherCode || $json.body?.voucherCode }}</li></ul><hr><p><i>Notificación enviada automáticamente a contactoalsiadministracion@gmail.com y sincronizada en Google Calendar.</i></p>"
+      },
+      "name": "3. Enviar Correo a contactoalsiadministracion@gmail.com",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        550,
+        420
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "smtp-cred-alsi",
+          "name": "SMTP / Gmail ALSI Copropiedad"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "1. Webhook Evento ALSI": {
+      "main": [
+        [
+          {
+            "node": "2. Crear Evento en Google Calendar (ALSI)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "3. Enviar Correo a contactoalsiadministracion@gmail.com",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

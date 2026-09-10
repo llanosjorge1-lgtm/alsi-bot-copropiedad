@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ALSI Administración - Panel de Control Copropiedad & Bot WhatsApp</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar / Navigation -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">
+          <i class="fa-solid fa-building-user"></i>
+        </div>
+        <div class="brand-text">
+          <h1>ALSI COPROPIEDAD</h1>
+          <span>Condominio Portada Norte VII</span>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <button class="nav-item active" data-tab="tab-status">
+          <i class="fa-solid fa-qrcode"></i>
+          <span>Conexión WhatsApp</span>
+        </button>
+        <button class="nav-item" data-tab="tab-chat">
+          <i class="fa-brands fa-whatsapp"></i>
+          <span>Simulador de Chat</span>
+        </button>
+        <button class="nav-item" data-tab="tab-appointments">
+          <i class="fa-solid fa-calendar-check"></i>
+          <span>Reuniones Agendadas</span>
+        </button>
+        <button class="nav-item" data-tab="tab-incidents">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span>Reportes de Comunidad</span>
+        </button>
+        <button class="nav-item" data-tab="tab-vouchers">
+          <i class="fa-solid fa-ticket"></i>
+          <span>Pases Digitales QR</span>
+        </button>
+        <button class="nav-item" data-tab="tab-banking">
+          <i class="fa-solid fa-building-columns"></i>
+          <span>Datos Bancarios</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="legal-badge">
+          <i class="fa-solid fa-shield-halved"></i>
+          <div>
+            <strong>RUT: 77.654.321-K</strong>
+            <span>contactoalsiadministracion@gmail.com</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="content-area">
+      <!-- Header -->
+      <header class="top-header">
+        <div class="header-title">
+          <h2 id="page-title">Conexión de WhatsApp Business</h2>
+          <p id="page-subtitle">Escanea el código QR para vinculación directa del número exclusivo de Condominio Portada Norte VII</p>
+        </div>
+        <div class="header-actions">
+          <div class="connection-status-badge Disconnected" id="global-status-badge">
+            <span class="dot"></span>
+            <span id="global-status-text">Verificando...</span>
+          </div>
+          <button class="btn btn-outline" id="btn-refresh-data">
+            <i class="fa-solid fa-rotate"></i> Actualizar
+          </button>
+        </div>
+      </header>
+
+      <!-- TAB 1: WhatsApp Status & QR Code -->
+      <section class="tab-content active" id="tab-status">
+        <div class="grid grid-2">
+          <div class="card card-qr">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-qrcode text-emerald"></i> Código QR de Vinculación</h3>
+              <span class="badge badge-emerald">Sesión ALSI</span>
+            </div>
+            <div class="card-body text-center">
+              <div class="qr-container" id="qr-wrapper">
+                <div class="qr-placeholder" id="qr-placeholder">
+                  <i class="fa-solid fa-circle-notch fa-spin fa-3x"></i>
+                  <p>Cargando Código QR de WhatsApp...</p>
+                </div>
+                <img id="qr-image" src="" alt="Código QR WhatsApp" style="display: none;">
+              </div>
+              <div class="qr-instructions">
+                <ol>
+                  <li>Abre <strong>WhatsApp</strong> en el teléfono de atención de ALSI.</li>
+                  <li>Ve a <strong>Menú / Configuración</strong> > <strong>Dispositivos Vinculados</strong>.</li>
+                  <li>Toca <strong>Vincular un dispositivo</strong> y escanea este código QR.</li>
+                </ol>
+              </div>
+              <div class="qr-actions">
+                <button class="btn btn-primary" id="btn-reset-qr">
+                  <i class="fa-solid fa-rotate-right"></i> Reiniciar Sesión & Emitir Nuevo QR
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-circle-info text-emerald"></i> Información de la Administración</h3>
+            </div>
+            <div class="card-body">
+              <div class="info-list">
+                <div class="info-item">
+                  <span class="info-label">Organización / Condominio</span>
+                  <span class="info-value">Condominio Portada Norte VII</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Administración</span>
+                  <span class="info-value">ALSI Administración Copropiedad</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">RUT Oficial</span>
+                  <span class="info-value">77.654.321-K</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Correo de Notificaciones</span>
+                  <span class="info-value">contactoalsiadministracion@gmail.com</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Directorio de Sesión Baileys</span>
+                  <span class="info-value"><code class="code-tag">./baileys_auth_info</code></span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Sincronización Cloud</span>
+                  <span class="info-value"><span class="badge badge-success">Google Calendar & n8n Ready</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: Chat Simulator -->
+      <section class="tab-content" id="tab-chat">
+        <div class="card chat-card">
+          <div class="card-header">
+            <h3><i class="fa-brands fa-whatsapp text-emerald"></i> Simulador Interactivo WhatsApp Bot</h3>
+            <span class="badge badge-info">Modo ALSI Copropiedad</span>
+          </div>
+          <div class="card-body p-0">
+            <div class="chat-window" id="chat-window">
+              <div class="chat-message bot-message">
+                <div class="message-content">
+                  ¡Hola! Buenas tardes 🏢✨ Te damos la bienvenida al canal de atención de ALSI Administración exclusivo para Condominio Portada Norte VII, Por favor indícanos tu nombre y en qué te podemos ayudar hoy:
+                  <br><br>
+                  • 1️⃣ <strong>Coordinación de reunión</strong><br>
+                  • 2️⃣ <strong>Cancelación de reunión</strong><br>
+                  • 3️⃣ <strong>Reprogramación de reunión</strong><br>
+                  • 4️⃣ <strong>Reporte de incidencia</strong><br>
+                  • 5️⃣ <strong>Datos de transferencia bancaria</strong>
+                </div>
+                <span class="message-time">Bot Agent</span>
+              </div>
+            </div>
+            <div class="chat-input-area">
+              <input type="text" id="chat-input" placeholder="Escribe un mensaje de prueba (ej: Hola soy Juan Pérez del depto 502 y quiero coordinar reunión)...">
+              <button class="btn btn-primary" id="btn-send-chat">
+                <i class="fa-solid fa-paper-plane"></i> Enviar
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: Appointments -->
+      <section class="tab-content" id="tab-appointments">
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-calendar-check text-emerald"></i> Reuniones de Atención Agendadas</h3>
+            <span class="badge badge-emerald">Google Calendar Sync</span>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table" id="table-appointments">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Residente / Copropietario</th>
+                    <th>Depto</th>
+                    <th>Asunto / Motivo</th>
+                    <th>Fecha & Hora</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="6" class="text-center">Cargando reuniones agendadas...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: Incidents -->
+      <section class="tab-content" id="tab-incidents">
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-triangle-exclamation text-emerald"></i> Reportes de Incidencias de Comunidad</h3>
+            <span class="badge badge-danger">Tickets Portada Norte VII</span>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table" id="table-incidents">
+                <thead>
+                  <tr>
+                    <th>Ticket ID</th>
+                    <th>Residente</th>
+                    <th>Depto</th>
+                    <th>Categoría / Falla</th>
+                    <th>Prioridad</th>
+                    <th>Estado</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="7" class="text-center">Cargando incidencias reportadas...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: Vouchers -->
+      <section class="tab-content" id="tab-vouchers">
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-ticket text-emerald"></i> Pases Digitales QR Emitidos</h3>
+            </div>
+            <div class="card-body">
+              <div class="vouchers-list" id="vouchers-container">
+                <p class="text-center">Cargando pases digitales...</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-circle-check text-emerald"></i> Validador de Pase QR</h3>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label>Ingrese Código de Pase (ej: ALS-A9B8-4321):</label>
+                <input type="text" id="redeem-code-input" class="form-control" placeholder="ALS-XXXX-XXXX">
+              </div>
+              <button class="btn btn-primary w-100 mt-3" id="btn-redeem-code">
+                <i class="fa-solid fa-check-double"></i> Validar Pase Digital
+              </button>
+
+              <div class="redeem-result mt-4" id="redeem-result" style="display: none;"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 6: Banking -->
+      <section class="tab-content" id="tab-banking">
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-building-columns text-emerald"></i> Datos Bancarios Oficiales de Gastos Comunes</h3>
+            <span class="badge badge-emerald">Portada Norte VII</span>
+          </div>
+          <div class="card-body">
+            <form id="form-banking">
+              <div class="grid grid-2">
+                <div class="form-group">
+                  <label>Razón Social / Titular:</label>
+                  <input type="text" id="bank-holder" class="form-control" value="ALSI Administración Copropiedad">
+                </div>
+                <div class="form-group">
+                  <label>RUT:</label>
+                  <input type="text" id="bank-rut" class="form-control" value="77.654.321-K">
+                </div>
+                <div class="form-group">
+                  <label>Banco:</label>
+                  <input type="text" id="bank-name" class="form-control" value="Banco de Chile">
+                </div>
+                <div class="form-group">
+                  <label>Tipo de Cuenta:</label>
+                  <input type="text" id="bank-type" class="form-control" value="Cuenta Corriente">
+                </div>
+                <div class="form-group">
+                  <label>Número de Cuenta:</label>
+                  <input type="text" id="bank-number" class="form-control" value="99-12345-01">
+                </div>
+                <div class="form-group">
+                  <label>Correo Notificaciones:</label>
+                  <input type="email" id="bank-email" class="form-control" value="contactoalsiadministracion@gmail.com">
+                </div>
+              </div>
+              <div class="form-group mt-3">
+                <label>Instrucciones de Pago:</label>
+                <textarea id="bank-instructions" class="form-control" rows="3">Transfiera el valor de su gasto común indicando su número de departamento en el asunto.</textarea>
+              </div>
+              <button type="submit" class="btn btn-primary mt-3">
+                <i class="fa-solid fa-floppy-disk"></i> Guardar Datos Bancarios
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

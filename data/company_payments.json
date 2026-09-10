@@ -1,0 +1,13 @@
+{
+  "alsi": {
+    "companyId": "alsi",
+    "companyName": "ALSI Administración - Condominio Portada Norte VII",
+    "bankName": "Banco de Chile",
+    "accountType": "Cuenta Corriente",
+    "accountNumber": "99-12345-01",
+    "rut": "77.654.321-K",
+    "holderName": "ALSI Administración Copropiedad",
+    "emailNotification": "contactoalsiadministracion@gmail.com",
+    "instructions": "Transfiera el valor de su gasto común indicando su número de departamento en el asunto."
+  }
+}
