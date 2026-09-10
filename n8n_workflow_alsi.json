@@ -65,7 +65,7 @@
       "name": "3a. Crear Evento Google Calendar",
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1,
-      "position": [820, 160],
+      "position": [820, 120],
       "credentials": {
         "googleCalendarOAuth2Api": {
           "id": "google-calendar-cred-alsi",
@@ -83,7 +83,7 @@
       "name": "4a. Correo Reunión Agendada",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2,
-      "position": [1120, 160],
+      "position": [820, 260],
       "credentials": {
         "smtp": {
           "id": "smtp-cred-alsi",
@@ -101,7 +101,7 @@
       "name": "4b. Correo Reunión Cancelada",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2,
-      "position": [820, 360],
+      "position": [820, 440],
       "credentials": {
         "smtp": {
           "id": "smtp-cred-alsi",
@@ -119,7 +119,7 @@
       "name": "3c. Correo Incidencia Reportada",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2,
-      "position": [820, 540],
+      "position": [820, 620],
       "credentials": {
         "smtp": {
           "id": "smtp-cred-alsi",
@@ -137,7 +137,7 @@
       "name": "3d. Correo Comprobante de Pago",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2,
-      "position": [820, 720],
+      "position": [820, 800],
       "credentials": {
         "smtp": {
           "id": "smtp-cred-alsi",
@@ -165,6 +165,11 @@
             "node": "3a. Crear Evento Google Calendar",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "4a. Correo Reunión Agendada",
+            "type": "main",
+            "index": 0
           }
         ],
         [
@@ -184,17 +189,6 @@
         [
           {
             "node": "3d. Correo Comprobante de Pago",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "3a. Crear Evento Google Calendar": {
-      "main": [
-        [
-          {
-            "node": "4a. Correo Reunión Agendada",
             "type": "main",
             "index": 0
           }
