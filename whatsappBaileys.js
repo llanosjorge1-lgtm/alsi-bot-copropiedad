@@ -39,10 +39,9 @@ function clearAuthInfo() {
           fs.rmSync(path.join(authDir, file), { recursive: true, force: true });
         } catch (fErr) {}
       }
-      fs.rmSync(authDir, { recursive: true, force: true });
-      console.log('🧹 Carpeta baileys_auth_info ALSI eliminada con éxito.');
+      console.log('🧹 Archivos internos de baileys_auth_info eliminados con éxito.');
     } catch (e) {
-      console.error('Error eliminando baileys_auth_info:', e.message);
+      console.error('Error eliminando archivos de baileys_auth_info:', e.message);
     }
   }
 }

@@ -220,14 +220,26 @@ app.post('/api/pending-requests/:id/resolve', (req, res) => {
   res.json(result);
 });
 
+process.on('uncaughtException', (err) => {
+  console.error('💥 Excepción no capturada en ALSI Server:', err.message);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('💥 Promesa rechazada no manejada:', reason);
+});
+
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, async () => {
+server.listen(PORT, '0.0.0.0', async () => {
   console.log(`\n===================================================`);
   console.log(`🚀 SERVIDOR ALSI COPROPIEDAD INICIADO EN PUERTO ${PORT}`);
-  console.log(`🌐 Dashboard UI: http://localhost:${PORT}`);
-  console.log(`📱 QR WhatsApp: http://localhost:${PORT}/qr`);
+  console.log(`🌐 Dashboard UI: http://0.0.0.0:${PORT}`);
+  console.log(`📱 QR WhatsApp: http://0.0.0.0:${PORT}/qr`);
   console.log(`===================================================\n`);
 
-  startReminderCron();
-  await connectToWhatsApp();
+  try {
+    startReminderCron();
+    await connectToWhatsApp();
+  } catch (initErr) {
+    console.error('Error al inicializar servicios de fondo:', initErr.message);
+  }
 });
