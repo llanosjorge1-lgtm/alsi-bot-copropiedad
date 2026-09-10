@@ -1,5 +1,6 @@
 const { readDb, writeDb, getCompanyPaymentDetails, addPendingRequest } = require('./db');
 const { createVoucher } = require('./voucherService');
+const { fetchGoogleCalendarBusySlots } = require('./googleCalendarService');
 
 const ALSI_CONFIG = {
   name: "ALSI Administración - Copropiedad & Condominios",
@@ -59,7 +60,7 @@ function formatBusinessDate(dateObj) {
   return `${dayOfWeek} ${dayNum} de ${monthName}`;
 }
 
-function getAvailableSlots(targetDate) {
+function getAvailableSlots(targetDate, externalBusySlots = []) {
   const db = readDb();
   const appointments = db.appointments || [];
 
@@ -71,7 +72,7 @@ function getAvailableSlots(targetDate) {
   const padDay = String(day).padStart(2, '0');
   const dateIsoPrefix = `${year}-${padMonth}-${padDay}`;
 
-  const bookedSlotIds = new Set();
+  const bookedSlotIds = new Set(externalBusySlots);
 
   appointments.forEach(apt => {
     if (apt.status === 'Cancelada' || apt.status === 'Cancelada (Reprogramada)' || (apt.paymentStatus && apt.paymentStatus.includes('Cancelad'))) {
@@ -223,11 +224,14 @@ async function processMessage({ message, history = [], senderPhone = null, pushN
   let targetBusinessDate = businessDays[0];
   let targetFormatted = formatBusinessDate(targetBusinessDate);
 
+  const lastAssistantMsg = (history && history.length > 0) ? (history[history.length - 1].content || '') : '';
+  const contextForDate = `${textLower} ${lastAssistantMsg}`.toLowerCase();
+
   let matchedByDayName = false;
   for (const bDay of businessDays) {
     const dayNames = ["domingo", "lunes", "martes", "miércoles", "miercoles", "jueves", "viernes", "sábado"];
     const bDayName = dayNames[bDay.getDay()];
-    if (textLower.includes(bDayName) || (bDayName === 'miércoles' && textLower.includes('miercoles'))) {
+    if (contextForDate.includes(bDayName) || (bDayName === 'miércoles' && contextForDate.includes('miercoles'))) {
       targetBusinessDate = bDay;
       targetFormatted = formatBusinessDate(bDay);
       matchedByDayName = true;
@@ -239,7 +243,7 @@ async function processMessage({ message, history = [], senderPhone = null, pushN
     for (const bDay of businessDays) {
       const dayNumStr = String(bDay.getDate());
       const regexDayNum = new RegExp(`(?:el|día|dia|de|para)?\\s*\\b${dayNumStr}\\b`);
-      if (regexDayNum.test(textLower)) {
+      if (regexDayNum.test(contextForDate)) {
         targetBusinessDate = bDay;
         targetFormatted = formatBusinessDate(bDay);
         break;
@@ -247,7 +251,8 @@ async function processMessage({ message, history = [], senderPhone = null, pushN
     }
   }
 
-  const availableSlots = getAvailableSlots(targetBusinessDate);
+  const googleBusySlots = await fetchGoogleCalendarBusySlots(targetBusinessDate);
+  const availableSlots = getAvailableSlots(targetBusinessDate, googleBusySlots);
 
   const isCancelRequest = textLower.includes('cancelar') || textLower.includes('anular') || textLower.includes('no podre') || textLower.includes('no podré') || textLower.includes('eliminar cita') || textLower.includes('eliminar reunion') || textLower.includes('eliminar reunión');
   const isRescheduleRequest = textLower.includes('reprogramar') || textLower.includes('cambiar hora') || textLower.includes('cambiar fecha') || textLower.includes('modificar cita') || textLower.includes('modificar reunion') || textLower.includes('modificar reunión');
@@ -304,7 +309,7 @@ async function processMessage({ message, history = [], senderPhone = null, pushN
       writeDb(db);
     }
 
-    const refreshedSlots = getAvailableSlots(targetBusinessDate);
+    const refreshedSlots = getAvailableSlots(targetBusinessDate, googleBusySlots);
     const nameTag = clientName ? `@${clientName}` : 'Residente';
     const morningList = refreshedSlots.filter(s => s.block === 'MAÑANA').map(s => `• **${s.id}**️⃣ ${s.label}`).join('\n');
     const afternoonList = refreshedSlots.filter(s => s.block === 'TARDE').map(s => `• **${s.id}**️⃣ ${s.label}`).join('\n');
