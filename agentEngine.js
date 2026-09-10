@@ -209,9 +209,9 @@ async function processMessage({ message, history = [], senderPhone = null, pushN
   }
 
   let unitNumber = 'Por Especificar';
-  const deptoMatch = userCombinedText.match(/(?:depto|departamento|dpto|unidad)\s*n?°?\s*([A-Za-z0-9\s.-]+?)(?=\s+y\s|\s+asunto|\s+para|\s+el\s|\s+a\s+las|\s+quiero|$|,|\.)/i) || 
-                    userCombinedText.match(/\bdepto\s*(\d+)/i) || 
-                    userCombinedText.match(/\bdpto\s*(\d+)/i);
+  const deptoMatch = userCombinedText.match(/(?:depto|departamento|dpto|unidad)\s*n?°?\s*([A-Za-z0-9-]+)/i) || 
+                    userCombinedText.match(/\bdepto\s*([A-Za-z0-9-]+)/i) || 
+                    userCombinedText.match(/\bdpto\s*([A-Za-z0-9-]+)/i);
   if (deptoMatch && deptoMatch[1]) {
     unitNumber = deptoMatch[1].trim();
   }
@@ -225,13 +225,13 @@ async function processMessage({ message, history = [], senderPhone = null, pushN
   let targetFormatted = formatBusinessDate(targetBusinessDate);
 
   const lastAssistantMsg = (history && history.length > 0) ? (history[history.length - 1].content || '') : '';
-  const contextForDate = `${textLower} ${lastAssistantMsg}`.toLowerCase();
 
   let matchedByDayName = false;
+  // 1. Prioridad absoluta: lo que el residente escribió en este mensaje
   for (const bDay of businessDays) {
     const dayNames = ["domingo", "lunes", "martes", "miércoles", "miercoles", "jueves", "viernes", "sábado"];
     const bDayName = dayNames[bDay.getDay()];
-    if (contextForDate.includes(bDayName) || (bDayName === 'miércoles' && contextForDate.includes('miercoles'))) {
+    if (textLower.includes(bDayName) || (bDayName === 'miércoles' && textLower.includes('miercoles'))) {
       targetBusinessDate = bDay;
       targetFormatted = formatBusinessDate(bDay);
       matchedByDayName = true;
@@ -243,10 +243,29 @@ async function processMessage({ message, history = [], senderPhone = null, pushN
     for (const bDay of businessDays) {
       const dayNumStr = String(bDay.getDate());
       const regexDayNum = new RegExp(`(?:el|día|dia|de|para)?\\s*\\b${dayNumStr}\\b`);
-      if (regexDayNum.test(contextForDate)) {
+      if (regexDayNum.test(textLower)) {
         targetBusinessDate = bDay;
         targetFormatted = formatBusinessDate(bDay);
+        matchedByDayName = true;
         break;
+      }
+    }
+  }
+
+  // 2. Solo si el residente NO mencionó ningún día ni número, revisar el último mensaje del bot
+  if (!matchedByDayName && lastAssistantMsg) {
+    const cleanAssistant = lastAssistantMsg.toLowerCase().replace(/\*/g, '');
+    const specificDayMatch = cleanAssistant.match(/bloques libres para el ([a-záéíóúñ]+ \d+ de [a-záéíóúñ]+)/i) ||
+                             cleanAssistant.match(/para el ([a-záéíóúñ]+ \d+ de [a-záéíóúñ]+)/i);
+    if (specificDayMatch) {
+      for (const bDay of businessDays) {
+        const formatted = formatBusinessDate(bDay).toLowerCase();
+        if (formatted.includes(specificDayMatch[1].trim()) || specificDayMatch[1].trim().includes(formatted)) {
+          targetBusinessDate = bDay;
+          targetFormatted = formatBusinessDate(bDay);
+          matchedByDayName = true;
+          break;
+        }
       }
     }
   }
@@ -408,31 +427,33 @@ async function processMessage({ message, history = [], senderPhone = null, pushN
 
   let matchedSlot = null;
 
-  if (wasAwaitingSlot) {
-    const digitMatch = trimmedMsg.match(/\b([1-9]|10|11)\b/i);
-    if (digitMatch && digitMatch[1]) {
-      const slotId = parseInt(digitMatch[1], 10);
-      matchedSlot = MEETING_SLOTS.find(s => s.id === slotId);
-    }
+  // 1. Horas explícitas escritas por el residente (máxima prioridad)
+  if (textLower.includes('10:30') || textLower.includes('10 y media') || textLower.includes('diez y media')) matchedSlot = MEETING_SLOTS[3]; // 10:30 a 11:00
+  else if (textLower.includes('10:00') || textLower.includes('10 am') || textLower.includes('a las 10') || textLower.includes('las 10') || textLower.includes('a las diez')) matchedSlot = MEETING_SLOTS[2]; // 10:00 a 10:30
+  else if (textLower.includes('9:30') || textLower.includes('09:30') || textLower.includes('9 y media') || textLower.includes('nueve y media')) matchedSlot = MEETING_SLOTS[1]; // 09:30 a 10:00
+  else if (textLower.includes('9:00') || textLower.includes('09:00') || textLower.includes('9 de la mañana') || textLower.includes('9 am') || textLower.includes('a las 9') || textLower.includes('a las nueve')) matchedSlot = MEETING_SLOTS[0]; // 09:00 a 09:30
+  else if (textLower.includes('11:30') || textLower.includes('once y media')) matchedSlot = MEETING_SLOTS[4]; // 11:30 a 12:00
+  else if (textLower.includes('12:30') || textLower.includes('doce y media')) matchedSlot = MEETING_SLOTS[6]; // 12:30 a 13:00
+  else if (textLower.includes('12:00') || textLower.includes('12 pm') || textLower.includes('a las 12') || textLower.includes('a las doce')) matchedSlot = MEETING_SLOTS[5]; // 12:00 a 12:30
+  else if (textLower.includes('15:30') || textLower.includes('3:30') || textLower.includes('tres y media')) matchedSlot = MEETING_SLOTS[8]; // 15:30 a 16:00
+  else if (textLower.includes('15:00') || textLower.includes('3 pm') || textLower.includes('a las 15') || textLower.includes('a las 3') || textLower.includes('a las tres')) matchedSlot = MEETING_SLOTS[7]; // 15:00 a 15:30
+  else if (textLower.includes('16:30') || textLower.includes('4:30') || textLower.includes('cuatro y media')) matchedSlot = MEETING_SLOTS[10]; // 16:30 a 17:00
+  else if (textLower.includes('16:00') || textLower.includes('4 pm') || textLower.includes('a las 16') || textLower.includes('a las 4') || textLower.includes('a las cuatro')) matchedSlot = MEETING_SLOTS[9]; // 16:00 a 16:30
 
-    if (!matchedSlot) {
-      if (textLower.includes('9:30') || textLower.includes('09:30')) matchedSlot = MEETING_SLOTS[1];
-      else if (textLower.includes('9:00') || textLower.includes('09:00') || textLower.includes('9 de la mañana') || textLower.includes('9 am') || textLower.includes('a las 9')) matchedSlot = MEETING_SLOTS[0];
-      else if (textLower.includes('10:30')) matchedSlot = MEETING_SLOTS[3];
-      else if (textLower.includes('10:00') || textLower.includes('10 am') || textLower.includes('a las 10')) matchedSlot = MEETING_SLOTS[2];
-      else if (textLower.includes('11:30')) matchedSlot = MEETING_SLOTS[4];
-      else if (textLower.includes('12:30')) matchedSlot = MEETING_SLOTS[6];
-      else if (textLower.includes('12:00') || textLower.includes('12 pm') || textLower.includes('a las 12')) matchedSlot = MEETING_SLOTS[5];
-      else if (textLower.includes('15:30') || textLower.includes('3:30')) matchedSlot = MEETING_SLOTS[8];
-      else if (textLower.includes('15:00') || textLower.includes('3 pm') || textLower.includes('a las 3')) matchedSlot = MEETING_SLOTS[7];
-      else if (textLower.includes('16:30') || textLower.includes('4:30')) matchedSlot = MEETING_SLOTS[10];
-      else if (textLower.includes('16:00') || textLower.includes('4 pm') || textLower.includes('a las 4')) matchedSlot = MEETING_SLOTS[9];
+  // 2. Si no hubo hora explícita, revisar si indicó número de bloque o eligió un número
+  if (!matchedSlot && (wasAwaitingSlot || textLower.includes('bloque') || textLower.includes('opcion') || textLower.includes('opción'))) {
+    const explicitBlockMatch = textLower.match(/(?:bloque|opcion|opción|numero|número)\s*([1-9]|10|11)\b/i) ||
+                              trimmedMsg.match(/^([1-9]|10|11)$/);
+    if (explicitBlockMatch && explicitBlockMatch[1]) {
+      const slotId = parseInt(explicitBlockMatch[1], 10);
+      matchedSlot = MEETING_SLOTS.find(s => s.id === slotId);
     }
   }
 
-  if (!matchedSlot && (lastBotMsgJson.includes('datos requeridos para completar') || lastBotMsgJson.includes('datos requeridos para confirmar'))) {
+  const cleanBotMsg = lastBotMsgJson.replace(/\*/g, '');
+  if (!matchedSlot && (cleanBotMsg.includes('datos requeridos') || cleanBotMsg.includes('has seleccionado el horario') || cleanBotMsg.includes('para registrar la cita'))) {
     for (const s of MEETING_SLOTS) {
-      if (lastBotMsgJson.includes(s.label.toLowerCase()) || lastBotMsgJson.includes(s.timeStr.toLowerCase())) {
+      if (cleanBotMsg.includes(s.label.toLowerCase()) || cleanBotMsg.includes(s.timeStr.toLowerCase())) {
         matchedSlot = s;
         break;
       }
