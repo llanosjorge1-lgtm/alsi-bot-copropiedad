@@ -7,6 +7,7 @@ const { processMessage } = require('./agentEngine');
 const { readDb, writeDb, getCompanyPaymentDetails, writeCompanyPayments, readCompanyPayments, readPendingRequests, resolvePendingRequest } = require('./db');
 const { validateAndRedeemVoucher, getVouchers } = require('./voucherService');
 const { startReminderCron } = require('./reminderCron');
+const { verifyWebhook: verifyInstagramWebhook, handleWebhook: handleInstagramWebhook } = require('./instagramService');
 
 const app = express();
 const server = http.createServer(app);
@@ -14,6 +15,10 @@ const server = http.createServer(app);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Webhooks de Instagram Direct Messages (Meta Graph API)
+app.get('/webhook/instagram', verifyInstagramWebhook);
+app.post('/webhook/instagram', handleInstagramWebhook);
 
 // Estado de WhatsApp & QR
 app.get('/api/status', (req, res) => {
