@@ -1,19 +1,50 @@
 {
-  "name": "ALSI Copropiedad - Notificación Correo & Google Calendar Sync (Portada Norte VII)",
+  "name": "ALSI Copropiedad - Flujo Completo Automatización (Portada Norte VII)",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
         "path": "alsi-copropiedad-event",
+        "responseMode": "onReceived",
         "options": {}
       },
       "name": "1. Webhook Evento ALSI",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [
-        250,
-        300
-      ]
+      "position": [250, 400]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "rules": [
+            {
+              "operation": "equal",
+              "value1": "={{ $json.body?.event || $json.event }}",
+              "value2": "MEETING_BOOKED"
+            },
+            {
+              "operation": "equal",
+              "value1": "={{ $json.body?.event || $json.event }}",
+              "value2": "MEETING_CANCELED"
+            },
+            {
+              "operation": "equal",
+              "value1": "={{ $json.body?.event || $json.event }}",
+              "value2": "INCIDENT_REPORTED"
+            },
+            {
+              "operation": "equal",
+              "value1": "={{ $json.body?.event || $json.event }}",
+              "value2": "PAYMENT_RECEIPT_SUBMITTED"
+            }
+          ]
+        },
+        "fallbackOutput": "extra"
+      },
+      "name": "2. Switch por Tipo de Evento",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [520, 400]
     },
     {
       "parameters": {
@@ -23,23 +54,19 @@
           "value": "primary",
           "mode": "list"
         },
-        "start": "={{ $json.startIso || $json.body?.startIso }}",
-        "end": "={{ $json.endIso || $json.body?.endIso }}",
-        "summary": "={{ $json.calendarSummary || $json.summary || $json.title || $json.body?.calendarSummary || $json.body?.summary || $json.body?.title || ('Reunión: ' + ($json.clientName || $json.body?.clientName || 'Residente') + ' - Depto ' + ($json.unitNumber || $json.body?.unitNumber || '00') + ' - Asunto: ' + ($json.meetingReason || $json.body?.meetingReason || 'Consulta Copropiedad')) }}",
-        "description": "={{ $json.calendarDescription || $json.body?.calendarDescription || ('Se ha coordinado una reunión con ' + ($json.clientName || $json.body?.clientName) + ' (Depto ' + ($json.unitNumber || $json.body?.unitNumber) + ')') }}",
+        "start": "={{ $json.body?.startIso || $json.startIso }}",
+        "end": "={{ $json.body?.endIso || $json.endIso }}",
+        "summary": "={{ $json.body?.summary || $json.summary || $json.body?.calendarSummary || $json.calendarSummary || ('Reunión: ' + ($json.body?.clientName || $json.clientName || 'Residente') + ' - Depto ' + ($json.body?.unitNumber || $json.unitNumber || '00') + ' - Asunto: ' + ($json.body?.meetingReason || $json.meetingReason || 'Consulta Copropiedad')) }}",
+        "description": "={{ 'Reunión coordinada automáticamente por el Bot ALSI.\\nResidente: ' + ($json.body?.clientName || $json.clientName) + '\\nDepto: ' + ($json.body?.unitNumber || $json.unitNumber) + '\\nAsunto: ' + ($json.body?.meetingReason || $json.meetingReason) + '\\nVoucher QR: ' + ($json.body?.voucherCode || $json.voucherCode || 'N/A') }}",
         "additionalFields": {
-          "attendees": [
-            "contactoalsiadministracion@gmail.com"
-          ]
+          "attendees": ["contactoalsiadministracion@gmail.com"],
+          "location": "Oficina ALSI - Condominio Portada Norte VII"
         }
       },
-      "name": "2. Crear Evento en Google Calendar (ALSI)",
+      "name": "3a. Crear Evento Google Calendar",
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1,
-      "position": [
-        550,
-        200
-      ],
+      "position": [820, 160],
       "credentials": {
         "googleCalendarOAuth2Api": {
           "id": "google-calendar-cred-alsi",
@@ -51,20 +78,71 @@
       "parameters": {
         "fromEmail": "contactoalsiadministracion@gmail.com",
         "toEmail": "contactoalsiadministracion@gmail.com",
-        "subject": "={{ $json.emailSubject || $json.body?.emailSubject || ('coordinación de reunión - ALSI Copropiedad: ' + ($json.clientName || $json.body?.clientName) + ' - Depto: ' + ($json.unitNumber || $json.body?.unitNumber) + ' - Asunto: ' + ($json.meetingReason || $json.body?.meetingReason)) }}",
-        "html": "=<h2>🏢✨ Nueva Reunión Coordinada - ALSI Copropiedad</h2><p>Estimada Administración ALSI (Portada Norte VII),</p><p>Se ha reservado de forma autónoma una reunión con las siguientes especificaciones:</p><ul><li><b>Condominio:</b> {{ $json.condoName || $json.body?.condoName || 'Condominio Portada Norte VII' }}</li><li><b>Residente / Copropietario:</b> {{ $json.clientName || $json.body?.clientName }}</li><li><b>Departamento:</b> {{ $json.unitNumber || $json.body?.unitNumber }}</li><li><b>Teléfono WhatsApp:</b> {{ $json.clientPhone || $json.body?.clientPhone }}</li><li><b>Asunto de la reunión:</b> {{ $json.meetingReason || $json.body?.meetingReason }}</li><li><b>Fecha y Hora Agendada:</b> {{ $json.dateTime || $json.body?.dateTime }}</li><li><b>ID Ticket / Solicitud:</b> {{ $json.ticketId || $json.body?.ticketId }}</li><li><b>Código Pase Digital QR:</b> {{ $json.voucherCode || $json.body?.voucherCode }}</li></ul><hr><p><i>Notificación enviada automáticamente a contactoalsiadministracion@gmail.com y sincronizada en Google Calendar.</i></p>"
+        "subject": "=✅ Reunión Agendada - {{ $json.body?.clientName || $json.clientName }} (Depto {{ $json.body?.unitNumber || $json.unitNumber }}) - {{ $json.body?.meetingReason || $json.meetingReason }}",
+        "html": "=<div style=\"font-family:'Segoe UI',Tahoma,sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;\">\n  <div style=\"background:linear-gradient(135deg,#059669,#10b981);padding:24px;text-align:center;\">\n    <h1 style=\"color:#fff;margin:0;font-size:22px;\">✅ Nueva Reunión Agendada</h1>\n    <p style=\"color:#d1fae5;margin:4px 0 0;font-size:14px;\">ALSI Administración Copropiedad — Portada Norte VII</p>\n  </div>\n  <div style=\"padding:24px;\">\n    <table style=\"width:100%;border-collapse:collapse;\">\n      <tr><td style=\"padding:8px 0;color:#64748b;width:140px;\">🏢 Condominio</td><td style=\"padding:8px 0;font-weight:bold;\">{{ $json.body?.condoName || $json.condoName || 'Condominio Portada Norte VII' }}</td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b;\">👤 Residente</td><td style=\"padding:8px 0;font-weight:bold;\">{{ $json.body?.clientName || $json.clientName }}</td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b;\">🏠 Departamento</td><td style=\"padding:8px 0;font-weight:bold;\">{{ $json.body?.unitNumber || $json.unitNumber }}</td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b;\">📋 Asunto</td><td style=\"padding:8px 0;font-weight:bold;\">{{ $json.body?.meetingReason || $json.meetingReason }}</td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b;\">📅 Fecha y Hora</td><td style=\"padding:8px 0;font-weight:bold;\">{{ $json.body?.dateTime || $json.dateTime }}</td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b;\">🎟️ Código Pase QR</td><td style=\"padding:8px 0;font-weight:bold;color:#059669;\">{{ $json.body?.voucherCode || $json.voucherCode || 'N/A' }}</td></tr>\n    </table>\n    <hr style=\"border:none;border-top:1px solid #e2e8f0;margin:16px 0;\">\n    <p style=\"color:#94a3b8;font-size:12px;text-align:center;margin:0;\">📧 Evento sincronizado automáticamente en Google Calendar • Bot ALSI IA</p>\n  </div>\n</div>"
       },
-      "name": "3. Enviar Correo a contactoalsiadministracion@gmail.com",
+      "name": "4a. Correo Reunión Agendada",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2,
-      "position": [
-        550,
-        420
-      ],
+      "position": [1120, 160],
       "credentials": {
         "smtp": {
           "id": "smtp-cred-alsi",
-          "name": "SMTP / Gmail ALSI Copropiedad"
+          "name": "SMTP Gmail ALSI Copropiedad"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "contactoalsiadministracion@gmail.com",
+        "toEmail": "contactoalsiadministracion@gmail.com",
+        "subject": "=🚫 Reunión Cancelada - {{ $json.body?.clientName || $json.clientName }} (Cita ID: {{ $json.body?.appointmentId || $json.appointmentId }})",
+        "html": "=<div style=\"font-family:'Segoe UI',Tahoma,sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;\">\n  <div style=\"background:linear-gradient(135deg,#dc2626,#ef4444);padding:24px;text-align:center;\">\n    <h1 style=\"color:#fff;margin:0;font-size:22px;\">🚫 Reunión Cancelada</h1>\n    <p style=\"color:#fecaca;margin:4px 0 0;font-size:14px;\">ALSI Administración Copropiedad — Portada Norte VII</p>\n  </div>\n  <div style=\"padding:24px;\">\n    <table style=\"width:100%;border-collapse:collapse;\">\n      <tr><td style=\"padding:8px 0;color:#64748b;width:140px;\">👤 Residente</td><td style=\"padding:8px 0;font-weight:bold;\">{{ $json.body?.clientName || $json.clientName }}</td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b;\">🆔 ID de Cita</td><td style=\"padding:8px 0;font-weight:bold;color:#dc2626;\">{{ $json.body?.appointmentId || $json.appointmentId }}</td></tr>\n    </table>\n    <div style=\"background:#fef2f2;border-left:4px solid #ef4444;padding:12px 16px;border-radius:8px;margin-top:16px;\">\n      <p style=\"margin:0;color:#991b1b;font-size:14px;\">⚠️ <strong>Acción requerida:</strong> Eliminar manualmente el evento correspondiente en Google Calendar si ya fue creado.</p>\n    </div>\n    <hr style=\"border:none;border-top:1px solid #e2e8f0;margin:16px 0;\">\n    <p style=\"color:#94a3b8;font-size:12px;text-align:center;margin:0;\">📧 Notificación automática • Bot ALSI IA</p>\n  </div>\n</div>"
+      },
+      "name": "4b. Correo Reunión Cancelada",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [820, 360],
+      "credentials": {
+        "smtp": {
+          "id": "smtp-cred-alsi",
+          "name": "SMTP Gmail ALSI Copropiedad"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "contactoalsiadministracion@gmail.com",
+        "toEmail": "contactoalsiadministracion@gmail.com",
+        "subject": "=🚨 Incidencia Reportada [{{ $json.body?.priority || $json.priority }}] - {{ $json.body?.description || $json.description }} (Ticket: {{ $json.body?.ticketId || $json.ticketId }})",
+        "html": "=<div style=\"font-family:'Segoe UI',Tahoma,sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;\">\n  <div style=\"background:linear-gradient(135deg,#d97706,#f59e0b);padding:24px;text-align:center;\">\n    <h1 style=\"color:#fff;margin:0;font-size:22px;\">🚨 Incidencia Reportada</h1>\n    <p style=\"color:#fef3c7;margin:4px 0 0;font-size:14px;\">ALSI Administración Copropiedad — Portada Norte VII</p>\n  </div>\n  <div style=\"padding:24px;\">\n    <div style=\"background:{{ ($json.body?.priority || $json.priority) === 'Alta' ? '#fef2f2' : '#f0fdf4' }};border-left:4px solid {{ ($json.body?.priority || $json.priority) === 'Alta' ? '#ef4444' : '#22c55e' }};padding:10px 16px;border-radius:8px;margin-bottom:16px;\">\n      <p style=\"margin:0;font-weight:bold;font-size:14px;\">Prioridad: {{ $json.body?.priority || $json.priority }}</p>\n    </div>\n    <table style=\"width:100%;border-collapse:collapse;\">\n      <tr><td style=\"padding:8px 0;color:#64748b;width:140px;\">🎫 Ticket ID</td><td style=\"padding:8px 0;font-weight:bold;color:#d97706;\">{{ $json.body?.ticketId || $json.ticketId }}</td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b;\">🏢 Condominio</td><td style=\"padding:8px 0;font-weight:bold;\">{{ $json.body?.condoName || $json.condoName || 'Portada Norte VII' }}</td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b;\">👤 Reportado por</td><td style=\"padding:8px 0;font-weight:bold;\">{{ $json.body?.clientName || $json.clientName }}</td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b;\">🏠 Departamento</td><td style=\"padding:8px 0;font-weight:bold;\">{{ $json.body?.unitNumber || $json.unitNumber }}</td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b;\">📝 Descripción</td><td style=\"padding:8px 0;font-weight:bold;\">{{ $json.body?.description || $json.description }}</td></tr>\n    </table>\n    <hr style=\"border:none;border-top:1px solid #e2e8f0;margin:16px 0;\">\n    <p style=\"color:#94a3b8;font-size:12px;text-align:center;margin:0;\">📧 Incidencia registrada y despachada automáticamente • Bot ALSI IA</p>\n  </div>\n</div>"
+      },
+      "name": "3c. Correo Incidencia Reportada",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [820, 540],
+      "credentials": {
+        "smtp": {
+          "id": "smtp-cred-alsi",
+          "name": "SMTP Gmail ALSI Copropiedad"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "contactoalsiadministracion@gmail.com",
+        "toEmail": "contactoalsiadministracion@gmail.com",
+        "subject": "=🧾 Comprobante de Pago Recibido - {{ $json.body?.clientName || $json.clientName }} (Depto {{ $json.body?.unitNumber || $json.unitNumber }}) - Monto: {{ $json.body?.amountStr || $json.amountStr }}",
+        "html": "=<div style=\"font-family:'Segoe UI',Tahoma,sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;\">\n  <div style=\"background:linear-gradient(135deg,#0284c7,#38bdf8);padding:24px;text-align:center;\">\n    <h1 style=\"color:#fff;margin:0;font-size:22px;\">🧾 Comprobante de Pago Recibido</h1>\n    <p style=\"color:#bae6fd;margin:4px 0 0;font-size:14px;\">ALSI Administración Copropiedad — Portada Norte VII</p>\n  </div>\n  <div style=\"padding:24px;\">\n    <table style=\"width:100%;border-collapse:collapse;\">\n      <tr><td style=\"padding:8px 0;color:#64748b;width:160px;\">👤 Copropietario</td><td style=\"padding:8px 0;font-weight:bold;\">{{ $json.body?.clientName || $json.clientName }}</td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b;\">🏠 Departamento</td><td style=\"padding:8px 0;font-weight:bold;\">{{ $json.body?.unitNumber || $json.unitNumber }}</td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b;\">💰 Monto</td><td style=\"padding:8px 0;font-weight:bold;color:#059669;\">{{ $json.body?.amountStr || $json.amountStr }}</td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b;\">🔢 Nº Operación</td><td style=\"padding:8px 0;font-weight:bold;\">{{ $json.body?.operationNumber || $json.operationNumber }}</td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b;\">📋 Código Recibo</td><td style=\"padding:8px 0;font-weight:bold;color:#0284c7;\">{{ $json.body?.receiptCode || $json.receiptCode }}</td></tr>\n      <tr><td style=\"padding:8px 0;color:#64748b;\">🎟️ Voucher QR</td><td style=\"padding:8px 0;font-weight:bold;\">{{ $json.body?.voucherCode || $json.voucherCode }}</td></tr>\n    </table>\n    <hr style=\"border:none;border-top:1px solid #e2e8f0;margin:16px 0;\">\n    <p style=\"color:#94a3b8;font-size:12px;text-align:center;margin:0;\">📧 Comprobante procesado automáticamente por OCR • Bot ALSI IA</p>\n  </div>\n</div>"
+      },
+      "name": "3d. Correo Comprobante de Pago",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [820, 720],
+      "credentials": {
+        "smtp": {
+          "id": "smtp-cred-alsi",
+          "name": "SMTP Gmail ALSI Copropiedad"
         }
       }
     }
@@ -74,12 +152,50 @@
       "main": [
         [
           {
-            "node": "2. Crear Evento en Google Calendar (ALSI)",
+            "node": "2. Switch por Tipo de Evento",
             "type": "main",
             "index": 0
-          },
+          }
+        ]
+      ]
+    },
+    "2. Switch por Tipo de Evento": {
+      "main": [
+        [
           {
-            "node": "3. Enviar Correo a contactoalsiadministracion@gmail.com",
+            "node": "3a. Crear Evento Google Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "4b. Correo Reunión Cancelada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "3c. Correo Incidencia Reportada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "3d. Correo Comprobante de Pago",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3a. Crear Evento Google Calendar": {
+      "main": [
+        [
+          {
+            "node": "4a. Correo Reunión Agendada",
             "type": "main",
             "index": 0
           }

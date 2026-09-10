@@ -1,33 +1,96 @@
-# 🏢 Guía de Configuración e Integración n8n - ALSI Copropiedad (Portada Norte VII)
+# 🏢 Guía de Configuración n8n — ALSI Administración Copropiedad (Portada Norte VII)
 
-Esta guía detalla el procedimiento para importar y conectar el flujo de automatización de **ALSI Administración Copropiedad** en n8n y Railway.
+## Archivo de Flujo
 
----
-
-## 1. Archivo de Flujo n8n
-El archivo listo para importar se encuentra en el directorio raíz del repositorio:
-📌 `n8n_workflow_alsi.json`
+📌 `n8n_workflow_alsi.json` — Flujo completo con **7 nodos** y enrutamiento por tipo de evento.
 
 ---
 
-## 2. Pasos para la Importación en n8n
+## Arquitectura del Flujo
 
-1. Accede a tu instancia de **n8n**.
-2. Haz clic en **Workflows** -> **Import from File**.
-3. Selecciona el archivo `n8n_workflow_alsi.json`.
-4. El workflow cargará los siguientes 3 nodos:
-   - **1. Webhook Evento ALSI** (Escucha los eventos enviados por el Bot Node.js).
-   - **2. Crear Evento en Google Calendar (ALSI)** (Agenda automáticamente la cita en Google Calendar).
-   - **3. Enviar Correo a contactoalsiadministracion@gmail.com** (Notifica a la administración).
+```
+Webhook → Switch (por event type)
+             ├─ MEETING_BOOKED    → Crear Evento Calendar → Correo ✅
+             ├─ MEETING_CANCELED  → Correo 🚫
+             ├─ INCIDENT_REPORTED → Correo 🚨
+             └─ PAYMENT_RECEIPT   → Correo 🧾
+```
 
 ---
 
-## 3. Configuración en Railway.app
+## Paso 1: Importar el Workflow en n8n
 
-1. Sube este proyecto a tu repositorio de GitHub `alsi-bot-copropiedad`.
-2. En Railway.app, crea un **Volume** montado en `/app/baileys_auth_info` para mantener viva la sesión de WhatsApp.
-3. Configura la variable de entorno `N8N_WEBHOOK_URL` con la URL de producción del webhook en n8n:
-   ```env
-   N8N_WEBHOOK_URL=https://tu-n8n.com/webhook/alsi-copropiedad-event
-   ```
-4. Abre `https://tu-app-railway.up.railway.app/qr` y escanea el código QR una sola vez.
+1. Abre tu instancia de **n8n**.
+2. Ve a **Workflows** → **Import from File**.
+3. Selecciona `n8n_workflow_alsi.json`.
+4. Verás **7 nodos** organizados en 4 ramas.
+
+---
+
+## Paso 2: Configurar Credenciales
+
+### A) Google Calendar OAuth2
+
+1. Ir a [Google Cloud Console](https://console.cloud.google.com/)
+2. Crear proyecto → Habilitar **Google Calendar API**
+3. Crear credenciales **OAuth 2.0 Client ID** (tipo "Web Application")
+4. Redirect URI: `https://TU-N8N/rest/oauth2-credential/callback`
+5. En n8n → **Credentials** → **New** → **Google Calendar OAuth2 API**
+6. Pegar Client ID y Client Secret → Autorizar con la cuenta `contactoalsiadministracion@gmail.com`
+7. El nodo **"3a. Crear Evento Google Calendar"** usará esta credencial automáticamente.
+
+### B) SMTP Gmail
+
+1. En la cuenta Gmail de ALSI (`contactoalsiadministracion@gmail.com`), activar **Verificación en 2 pasos**
+2. Ir a [App Passwords](https://myaccount.google.com/apppasswords)
+3. Generar contraseña de aplicación → Seleccionar "Correo" → "Otro (n8n)"
+4. En n8n → **Credentials** → **New** → **SMTP** con:
+   - **Host**: `smtp.gmail.com`
+   - **Port**: `465`
+   - **SSL**: `true`
+   - **User**: `contactoalsiadministracion@gmail.com`
+   - **Password**: la App Password generada
+5. Los nodos de correo (4a, 4b, 3c, 3d) usarán esta credencial.
+
+---
+
+## Paso 3: Activar el Workflow
+
+1. Haz clic en el interruptor **Active** (esquina superior derecha en n8n).
+2. El webhook quedará escuchando en: `https://TU-N8N/webhook/alsi-copropiedad-event`
+3. Copia esa URL.
+
+---
+
+## Paso 4: Configurar la Variable de Entorno en Railway
+
+En el servicio de Railway de ALSI, agrega la variable:
+
+```env
+N8N_WEBHOOK_URL=https://TU-N8N/webhook/alsi-copropiedad-event
+```
+
+Reemplaza `TU-N8N` con el dominio real de tu instancia n8n.
+
+---
+
+## Tipos de Evento que Procesa el Flujo
+
+| Evento | Campo `event` | Acción |
+|--------|--------------|--------|
+| Reunión agendada | `MEETING_BOOKED` | Crea evento en Calendar + Correo con datos de la cita |
+| Reunión cancelada | `MEETING_CANCELED` | Correo de notificación de cancelación |
+| Incidencia reportada | `INCIDENT_REPORTED` | Correo con ticket ID, prioridad y descripción |
+| Comprobante de pago | `PAYMENT_RECEIPT_SUBMITTED` | Correo con monto, Nº operación y código de recibo |
+
+---
+
+## Verificación
+
+Para probar el webhook manualmente:
+
+```bash
+curl -X POST https://TU-N8N/webhook/alsi-copropiedad-event \
+  -H "Content-Type: application/json" \
+  -d '{"event":"MEETING_BOOKED","clientName":"Juan Pérez","unitNumber":"501","meetingReason":"Consulta gastos comunes","dateTime":"2026-09-15 10:00","startIso":"2026-09-15T10:00:00-03:00","endIso":"2026-09-15T10:30:00-03:00","voucherCode":"ALSI-TEST-001"}'
+```
