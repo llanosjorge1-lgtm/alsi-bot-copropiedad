@@ -185,14 +185,19 @@ async function connectToWhatsApp(forceClean = false) {
           await waSocket.sendMessage(remoteJid, { text: result.reply }, { quoted: msg });
           console.log(`📤 Respuesta enviada por WhatsApp ALSI a [${senderPhone}]!`);
 
-          if (result.voucher && result.voucher.qrCodeDataUrl) {
+          const qrData = result.voucher?.qrCodeDataUrl || result.voucher?.qrDataUrl;
+          if (result.voucher && qrData) {
             try {
-              const base64Data = result.voucher.qrCodeDataUrl.replace(/^data:image\/png;base64,/, "");
+              const base64Data = qrData.replace(/^data:image\/\w+;base64,/, "");
               const buffer = Buffer.from(base64Data, 'base64');
               await waSocket.sendMessage(remoteJid, {
                 image: buffer,
-                caption: `🎟️ *Pase Digital de Atención ALSI Copropiedades*\nCódigo: *${result.voucher.code}*\nPresente este código QR al momento de su atención.`
-              }, { quoted: msg });
+                caption: `🎟️ *Pase Digital de Atención ALSI Copropiedades*\n\n` +
+                  `• Código: *${result.voucher.code}*\n` +
+                  `• Condominio: *Condominio Portada Norte VII*\n` +
+                  `• Titular: *${result.voucher.clientName}*\n\n` +
+                  `Presenta este código QR al momento de tu atención en la administración. 🏢✨`
+              });
               console.log(`🖼️ Código QR enviado exitosamente a [${senderPhone}]!`);
             } catch (qrErr) {
               console.error("Error enviando imagen QR:", qrErr.message);

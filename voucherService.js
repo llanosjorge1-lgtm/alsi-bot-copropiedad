@@ -110,6 +110,7 @@ async function createVoucher({
     paymentConfirmedStamp: "✅ REUNIÓN CONFIRMADA",
     legalDisclaimer: LEGAL_ANTI_FRAUD_DISCLAIMER,
     qrDataUrl,
+    qrCodeDataUrl: qrDataUrl,
     walletPassData,
     status: 'Activo',
     createdAt: new Date().toISOString()
