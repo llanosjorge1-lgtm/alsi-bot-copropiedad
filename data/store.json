@@ -13,9 +13,14 @@
       "slotId": 3,
       "startIso": "2026-09-14T10:00:00-03:00",
       "endIso": "2026-09-14T10:30:00-03:00",
-      "status": "Confirmada",
+      "status": "Realizada",
       "paymentStatus": "Confirmada (Gratuita)",
-      "createdAt": "2026-09-11T10:15:00.000Z"
+      "createdAt": "2026-09-11T10:15:00.000Z",
+      "attendedBy": "Jorge Llanos (Administrador)",
+      "followUpStatus": "Realizada / Resuelta",
+      "resolution": "Resolución probada con éxito",
+      "resolutionDate": "2026-09-11T12:00:00.000Z",
+      "updatedAt": "2026-09-11T15:52:12.959Z"
     },
     {
       "id": "apt-1726050002",
@@ -30,9 +35,13 @@
       "slotId": 5,
       "startIso": "2026-09-15T11:30:00-03:00",
       "endIso": "2026-09-15T12:00:00-03:00",
-      "status": "Confirmada",
+      "status": "En Gestión",
       "paymentStatus": "Confirmada (Gratuita)",
-      "createdAt": "2026-09-11T11:30:00.000Z"
+      "createdAt": "2026-09-11T11:30:00.000Z",
+      "attendedBy": "María José (Supervisora)",
+      "followUpStatus": "En Gestión",
+      "resolution": "Coordinación con cerrajería para confección de duplicado de llave de bodega poniente y entrega programada en conserjería.",
+      "resolutionDate": null
     },
     {
       "id": "apt-1726050003",
@@ -47,9 +56,13 @@
       "slotId": 10,
       "startIso": "2026-09-16T16:00:00-03:00",
       "endIso": "2026-09-16T16:30:00-03:00",
-      "status": "Confirmada",
+      "status": "Realizada",
       "paymentStatus": "Confirmada (Gratuita)",
-      "createdAt": "2026-09-11T09:45:00.000Z"
+      "createdAt": "2026-09-11T09:45:00.000Z",
+      "attendedBy": "Jorge Llanos (Administrador)",
+      "followUpStatus": "Realizada / Resuelta",
+      "resolution": "Se autorizó protocolo de mudanza para el fin de semana en bloque protegido de 10:00 a 14:00 hrs. Notificado a conserjería.",
+      "resolutionDate": "2026-09-11T11:30:00.000Z"
     }
   ],
   "vouchers": [
@@ -195,5 +208,40 @@
   "settings": {
     "condoName": "Condominio Portada Norte VII",
     "adminEmail": "contactoalsiadministracion@gmail.com"
-  }
+  },
+  "habitaOpsReports": [
+    {
+      "id": "hop-1726050101",
+      "title": "Inspección Semanal de Rondas y Bombas de Impulsión - HabitaOps",
+      "reportDate": "2026-09-09",
+      "category": "Inspección Sala de Bombas y Calderas",
+      "driveUrl": "https://drive.google.com/drive/folders/alsi-portada-norte-vii-bombas",
+      "observations": "Bombas 1 y 2 operando con presión nominal de 4.2 bar. Se ajustó empaque de válvula check poniente.",
+      "status": "Conforme",
+      "uploadedBy": "Técnico Operaciones HabitaOps",
+      "createdAt": "2026-09-09T18:00:00.000Z"
+    },
+    {
+      "id": "hop-1726050102",
+      "title": "Ronda Nocturna de Seguridad y Bitácora de Conserjería - HabitaOps",
+      "reportDate": "2026-09-10",
+      "category": "Ronda de Conserjería / Seguridad",
+      "driveUrl": "https://drive.google.com/drive/folders/alsi-portada-norte-vii-rondas",
+      "observations": "Checklist de 12 puntos de control perimetral verificado al 100%. Sin novedades en accesos vehiculares.",
+      "status": "Conforme",
+      "uploadedBy": "Supervisor de Seguridad ALSI",
+      "createdAt": "2026-09-10T23:30:00.000Z"
+    },
+    {
+      "id": "hop-1726050103",
+      "title": "Mantenimiento Preventivo Portón Eléctrico Oriente - HabitaOps",
+      "reportDate": "2026-09-11",
+      "category": "Mantenimiento Portón / CCTV",
+      "driveUrl": "https://drive.google.com/drive/folders/alsi-portada-norte-vii-portones",
+      "observations": "Se realizó calibración de finales de carrera y lubricación de cremallera. Pendiente cambio de fotocelda poniente (Ticket INC-284910).",
+      "status": "Con Observaciones",
+      "uploadedBy": "Servicio Técnico Especializado",
+      "createdAt": "2026-09-11T10:00:00.000Z"
+    }
+  ]
 }

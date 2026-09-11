@@ -4,7 +4,19 @@ const http = require('http');
 const path = require('path');
 const { connectToWhatsApp, getWhatsAppStatus, resetWhatsAppConnection, reconnectWhatsApp } = require('./whatsappBaileys');
 const { processMessage } = require('./agentEngine');
-const { readDb, writeDb, getCompanyPaymentDetails, writeCompanyPayments, readCompanyPayments, readPendingRequests, resolvePendingRequest } = require('./db');
+const { 
+  readDb, 
+  writeDb, 
+  getCompanyPaymentDetails, 
+  writeCompanyPayments, 
+  readCompanyPayments, 
+  readPendingRequests, 
+  resolvePendingRequest,
+  updateAppointmentCrm,
+  getHabitaOpsReports,
+  addHabitaOpsReport,
+  deleteHabitaOpsReport
+} = require('./db');
 const { validateAndRedeemVoucher, getVouchers } = require('./voucherService');
 const { startReminderCron } = require('./reminderCron');
 const { verifyWebhook: verifyInstagramWebhook, handleWebhook: handleInstagramWebhook } = require('./instagramService');
@@ -216,6 +228,17 @@ app.post('/api/appointments/:id/cancel', (req, res) => {
   res.status(404).json({ success: false, message: 'Cita no encontrada' });
 });
 
+// Seguimiento CRM de Reuniones (Quién tomó la reunión, estado y resolución)
+app.post('/api/appointments/:id/crm', (req, res) => {
+  const { id } = req.params;
+  const result = updateAppointmentCrm(id, req.body);
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(404).json(result);
+  }
+});
+
 // Incidencias / Reportes de Comunidad
 app.get('/api/incidents', (req, res) => {
   const db = readDb();
@@ -301,6 +324,95 @@ app.post('/api/pending-requests/:id/resolve', (req, res) => {
   const { id } = req.params;
   const result = resolvePendingRequest(id);
   res.json(result);
+});
+
+// Informes de Operaciones HabitaOps (Google Drive & Rondas)
+app.get('/api/habitaops', (req, res) => {
+  const reports = getHabitaOpsReports();
+  res.json({ success: true, reports });
+});
+
+app.post('/api/habitaops', (req, res) => {
+  try {
+    const { title, reportDate, category, driveUrl, observations, status, uploadedBy } = req.body;
+    if (!title) {
+      return res.status(400).json({ success: false, message: "El título del informe es requerido" });
+    }
+    const newReport = addHabitaOpsReport({
+      title,
+      reportDate,
+      category,
+      driveUrl,
+      observations,
+      status,
+      uploadedBy
+    });
+    res.json({ success: true, report: newReport });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.delete('/api/habitaops/:id', (req, res) => {
+  const { id } = req.params;
+  const result = deleteHabitaOpsReport(id);
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(404).json(result);
+  }
+});
+
+// Informe Ejecutivo Consolidado para la Comunidad & Liberación de Factura
+app.get('/api/reports/executive-summary', (req, res) => {
+  const db = readDb();
+  const appointments = db.appointments || [];
+  const incidents = db.incidents || [];
+  const habitaOpsReports = db.habitaOpsReports || [];
+  const company = getCompanyPaymentDetails();
+
+  // Métricas de Reuniones
+  const totalAppointments = appointments.length;
+  const resolvedAppointments = appointments.filter(a => a.status === 'Realizada' || a.followUpStatus === 'Realizada / Resuelta').length;
+  const canceledAppointments = appointments.filter(a => a.status === 'Cancelada' || a.followUpStatus === 'Cancelada').length;
+  const inProgressAppointments = appointments.filter(a => a.status === 'En Gestión' || a.followUpStatus === 'En Gestión').length;
+  const pendingAppointments = totalAppointments - resolvedAppointments - canceledAppointments - inProgressAppointments;
+
+  // Métricas de Incidencias
+  const totalIncidents = incidents.length;
+  const resolvedIncidents = incidents.filter(i => i.status === 'Resuelto').length;
+  const pendingIncidents = totalIncidents - resolvedIncidents;
+  const incidentResolutionRate = totalIncidents > 0 ? Math.round((resolvedIncidents / totalIncidents) * 100) : 100;
+
+  // Métricas HabitaOps
+  const totalHabitaOps = habitaOpsReports.length;
+
+  res.json({
+    success: true,
+    condoName: "Condominio Portada Norte VII",
+    administrationName: "ALSI Administración Copropiedad",
+    rut: "77.654.321-K",
+    adminEmail: "contactoalsiadministracion@gmail.com",
+    metrics: {
+      totalAppointments,
+      resolvedAppointments,
+      inProgressAppointments,
+      pendingAppointments,
+      canceledAppointments,
+      appointmentResolutionRate: (totalAppointments - canceledAppointments) > 0 
+        ? Math.round((resolvedAppointments / (totalAppointments - canceledAppointments)) * 100) 
+        : 100,
+      totalIncidents,
+      resolvedIncidents,
+      pendingIncidents,
+      incidentResolutionRate,
+      totalHabitaOps
+    },
+    appointments,
+    incidents,
+    habitaOpsReports,
+    company
+  });
 });
 
 process.on('uncaughtException', (err) => {

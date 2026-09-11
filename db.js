@@ -80,6 +80,7 @@ function readDb() {
   db.incidents = db.incidents || [];
   db.receipts = db.receipts || [];
   db.settings = db.settings || {};
+  db.habitaOpsReports = db.habitaOpsReports || [];
 
   return db;
 }
@@ -200,6 +201,72 @@ function resolvePendingRequest(id) {
   return { success: false, message: "Solicitud no encontrada" };
 }
 
+function updateAppointmentCrm(id, crmData) {
+  const db = readDb();
+  db.appointments = db.appointments || [];
+  const apt = db.appointments.find(a => a.id === id);
+  if (!apt) {
+    return { success: false, message: 'Cita no encontrada' };
+  }
+
+  if (crmData.attendedBy !== undefined) apt.attendedBy = crmData.attendedBy;
+  if (crmData.followUpStatus !== undefined) apt.followUpStatus = crmData.followUpStatus;
+  if (crmData.resolution !== undefined) apt.resolution = crmData.resolution;
+  if (crmData.notes !== undefined) apt.notes = crmData.notes;
+  if (crmData.resolutionDate !== undefined) apt.resolutionDate = crmData.resolutionDate;
+
+  if (crmData.followUpStatus === 'Realizada / Resuelta') {
+    apt.status = 'Realizada';
+    if (!apt.resolutionDate) apt.resolutionDate = new Date().toISOString();
+  } else if (crmData.followUpStatus === 'Cancelada') {
+    apt.status = 'Cancelada';
+  } else if (crmData.followUpStatus === 'No Asistió') {
+    apt.status = 'No Asistió';
+  } else if (crmData.followUpStatus === 'En Gestión') {
+    apt.status = 'En Gestión';
+  }
+
+  apt.updatedAt = new Date().toISOString();
+  writeDb(db);
+  return { success: true, appointment: apt };
+}
+
+function getHabitaOpsReports() {
+  const db = readDb();
+  return db.habitaOpsReports || [];
+}
+
+function addHabitaOpsReport(data) {
+  const db = readDb();
+  db.habitaOpsReports = db.habitaOpsReports || [];
+  const newReport = {
+    id: `hop-${Date.now()}`,
+    title: data.title || 'Informe de Operaciones HabitaOps',
+    reportDate: data.reportDate || new Date().toISOString().split('T')[0],
+    category: data.category || 'Inspección General',
+    driveUrl: data.driveUrl || '',
+    observations: data.observations || '',
+    status: data.status || 'Conforme',
+    uploadedBy: data.uploadedBy || 'Administración ALSI',
+    createdAt: new Date().toISOString()
+  };
+  db.habitaOpsReports.unshift(newReport);
+  writeDb(db);
+  return newReport;
+}
+
+function deleteHabitaOpsReport(id) {
+  const db = readDb();
+  db.habitaOpsReports = db.habitaOpsReports || [];
+  const idx = db.habitaOpsReports.findIndex(r => r.id === id);
+  if (idx !== -1) {
+    const deleted = db.habitaOpsReports.splice(idx, 1)[0];
+    writeDb(db);
+    return { success: true, deleted };
+  }
+  return { success: false, message: 'Informe no encontrado' };
+}
+
 module.exports = {
   readDb,
   writeDb,
@@ -208,5 +275,9 @@ module.exports = {
   getCompanyPaymentDetails,
   readPendingRequests,
   addPendingRequest,
-  resolvePendingRequest
+  resolvePendingRequest,
+  updateAppointmentCrm,
+  getHabitaOpsReports,
+  addHabitaOpsReport,
+  deleteHabitaOpsReport
 };

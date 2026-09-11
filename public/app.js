@@ -8,8 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const tabMeta = {
     'tab-status': { title: 'Conexión de WhatsApp Business', subtitle: 'Escanea el código QR para vinculación directa del número exclusivo de Condominio Portada Norte VII' },
     'tab-chat': { title: 'Simulador Interactivo de Chat', subtitle: 'Prueba en vivo el motor de atención de residentes y agendamiento' },
-    'tab-appointments': { title: 'Reuniones de Atención Agendadas', subtitle: 'Listado de citas sincronizadas autónomamente con Google Calendar' },
-    'tab-incidents': { title: 'Reportes de Incidencias de Comunidad', subtitle: 'Gestión de tickets de fallas en portón, conserjería, bombas, etc.' },
+    'tab-appointments': { title: 'Reuniones de Atención & Gestión CRM', subtitle: 'Seguimiento de reuniones con residentes, responsables asignados y acuerdos pactados' },
+    'tab-incidents': { title: 'Reportes de Incidencias de Comunidad', subtitle: 'Gestión de tickets de fallas en portón, conserjería, bombas y áreas comunes' },
+    'tab-habitaops': { title: 'Informes de Operaciones HabitaOps', subtitle: 'Vinculación de rondas, inspecciones y reportes técnicos desde Google Drive y correo' },
+    'tab-reports': { title: 'Informe para la Comunidad & Liberación de Factura', subtitle: 'Rendición consolidada de cuentas para el Comité de Administración con formato imprimible en PDF' },
     'tab-vouchers': { title: 'Pases Digitales QR', subtitle: 'Emisión y validación de comprobantes de ingreso a reuniones' },
     'tab-banking': { title: 'Datos Bancarios Oficiales', subtitle: 'Configuración de cuenta corriente para recepción de gastos comunes' }
   };
@@ -31,6 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (targetTab === 'tab-appointments') loadAppointments();
       if (targetTab === 'tab-incidents') loadIncidents();
+      if (targetTab === 'tab-habitaops') loadHabitaOps();
+      if (targetTab === 'tab-reports') loadExecutiveReport();
       if (targetTab === 'tab-vouchers') loadVouchers();
       if (targetTab === 'tab-banking') loadBanking();
     });
@@ -80,6 +84,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Pre-cargar todas las secciones de datos inmediatamente
   loadAppointments();
   loadIncidents();
+  loadHabitaOps();
+  loadExecutiveReport();
   loadVouchers();
   loadBanking();
 
@@ -100,6 +106,8 @@ document.addEventListener('DOMContentLoaded', () => {
     checkStatus();
     loadAppointments();
     loadIncidents();
+    loadHabitaOps();
+    loadExecutiveReport();
     loadVouchers();
     loadBanking();
   });
@@ -223,6 +231,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Sincronizar datos de reuniones e incidencias si cambiaron durante el chat
         loadAppointments();
         loadIncidents();
+        loadHabitaOps();
+        loadExecutiveReport();
         loadVouchers();
       }
     } catch (err) {
@@ -258,32 +268,126 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') sendChatMessage();
   });
 
+  // Variables y Lógica del Modal CRM
+  let cachedAppointments = [];
+  const modalCrmBackdrop = document.getElementById('modal-crm-backdrop');
+  const btnCloseCrmModal = document.getElementById('btn-close-crm-modal');
+  const btnCancelCrm = document.getElementById('btn-cancel-crm');
+  const formCrmModal = document.getElementById('form-crm-modal');
+
+  function openCrmModal(id) {
+    const apt = cachedAppointments.find(a => a.id === id);
+    if (!apt) return;
+
+    document.getElementById('crm-apt-id').value = apt.id;
+    document.getElementById('crm-modal-title').innerHTML = `<i class="fa-solid fa-user-check text-emerald"></i> Seguimiento CRM: ${apt.clientName}`;
+    document.getElementById('crm-modal-subtitle').textContent = `ID: ${apt.id} • Depto: ${apt.unitNumber || 'Por Especificar'} • ${apt.dateTime}`;
+    document.getElementById('crm-attended-by').value = apt.attendedBy || 'Jorge Llanos (Administrador)';
+    document.getElementById('crm-followup-status').value = apt.followUpStatus || (apt.status === 'Realizada' ? 'Realizada / Resuelta' : apt.status || 'Agendada');
+    document.getElementById('crm-resolution').value = apt.resolution || '';
+    document.getElementById('crm-notes').value = apt.notes || '';
+
+    if (modalCrmBackdrop) modalCrmBackdrop.style.display = 'flex';
+  }
+
+  function closeCrmModal() {
+    if (modalCrmBackdrop) modalCrmBackdrop.style.display = 'none';
+  }
+
+  btnCloseCrmModal?.addEventListener('click', closeCrmModal);
+  btnCancelCrm?.addEventListener('click', closeCrmModal);
+  modalCrmBackdrop?.addEventListener('click', (e) => {
+    if (e.target === modalCrmBackdrop) closeCrmModal();
+  });
+
+  formCrmModal?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const aptId = document.getElementById('crm-apt-id').value;
+    const payload = {
+      attendedBy: document.getElementById('crm-attended-by').value.trim(),
+      followUpStatus: document.getElementById('crm-followup-status').value,
+      resolution: document.getElementById('crm-resolution').value.trim(),
+      notes: document.getElementById('crm-notes').value.trim()
+    };
+
+    try {
+      const res = await fetch(`/api/appointments/${aptId}/crm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        closeCrmModal();
+        loadAppointments();
+        loadExecutiveReport();
+      } else {
+        alert(data.message || 'Error al guardar seguimiento CRM');
+      }
+    } catch (err) {
+      alert('Error de conexión al guardar seguimiento CRM');
+    }
+  });
+
   async function loadAppointments() {
     try {
       const res = await fetch('/api/appointments');
       const data = await res.json();
       const tbody = document.querySelector('#table-appointments tbody');
+      cachedAppointments = data.appointments || [];
 
-      if (!data.appointments || data.appointments.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No hay reuniones agendadas aún.</td></tr>';
+      if (!cachedAppointments || cachedAppointments.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No hay reuniones agendadas aún.</td></tr>';
         return;
       }
 
-      tbody.innerHTML = data.appointments.map(apt => `
-        <tr>
-          <td><code class="code-tag">${apt.id}</code></td>
-          <td><strong>${apt.clientName}</strong></td>
-          <td>${apt.unitNumber || 'Por Especificar'}</td>
-          <td>${apt.asunto || apt.serviceType}</td>
-          <td><span class="badge badge-info">${apt.dateTime}</span></td>
-          <td><span class="badge ${apt.status === 'Confirmada' ? 'badge-success' : apt.status === 'Cancelada' ? 'badge-danger' : 'badge-warning'}">${apt.status}</span></td>
-          <td>
-            ${apt.status !== 'Cancelada'
-              ? `<button class="btn btn-sm btn-outline cancel-appointment" data-id="${apt.id}"><i class="fa-solid fa-ban text-danger"></i> Cancelar</button>`
-              : '<span class="text-muted">Cancelada</span>'}
-          </td>
-        </tr>
-      `).join('');
+      tbody.innerHTML = cachedAppointments.map(apt => {
+        const followStatus = apt.followUpStatus || (apt.status === 'Realizada' ? 'Realizada / Resuelta' : apt.status);
+        let badgeClass = 'badge-info';
+        if (followStatus === 'Realizada / Resuelta' || followStatus === 'Realizada') badgeClass = 'badge-success';
+        else if (followStatus === 'Cancelada') badgeClass = 'badge-danger';
+        else if (followStatus === 'En Gestión') badgeClass = 'badge-warning';
+
+        return `
+          <tr>
+            <td><code class="code-tag">${apt.id}</code></td>
+            <td><strong>${apt.clientName}</strong></td>
+            <td>${apt.unitNumber || 'Por Especificar'}</td>
+            <td>${apt.asunto || apt.serviceType}</td>
+            <td><span class="badge badge-info">${apt.dateTime}</span></td>
+            <td>
+              ${apt.attendedBy 
+                ? `<span class="badge badge-emerald"><i class="fa-solid fa-user-tie"></i> ${apt.attendedBy}</span>`
+                : `<span class="text-muted"><i class="fa-regular fa-clock"></i> Por Asignar</span>`}
+            </td>
+            <td>
+              <span class="badge ${badgeClass}">${followStatus}</span>
+              ${apt.resolution 
+                ? `<div style="font-size: 0.76rem; color: #94a3b8; margin-top: 5px; max-width: 250px; line-height: 1.25;"><i class="fa-solid fa-check text-emerald"></i> ${apt.resolution.slice(0, 95)}${apt.resolution.length > 95 ? '...' : ''}</div>` 
+                : ''}
+            </td>
+            <td>
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button class="btn btn-sm btn-primary open-crm-modal" data-id="${apt.id}" title="Gestionar Seguimiento y Resolución">
+                  <i class="fa-solid fa-user-gear"></i> CRM / Caso
+                </button>
+                ${apt.status !== 'Cancelada'
+                  ? `<button class="btn btn-sm btn-outline cancel-appointment" data-id="${apt.id}" title="Cancelar Reunión">
+                      <i class="fa-solid fa-ban text-danger"></i>
+                    </button>`
+                  : ''}
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      document.querySelectorAll('.open-crm-modal').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = e.currentTarget.getAttribute('data-id');
+          openCrmModal(id);
+        });
+      });
 
       document.querySelectorAll('.cancel-appointment').forEach(btn => {
         btn.addEventListener('click', async (e) => {
@@ -291,6 +395,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (confirm(`¿Deseas cancelar la reunión ${id}?`)) {
             await fetch(`/api/appointments/${id}/cancel`, { method: 'POST' });
             loadAppointments();
+            loadExecutiveReport();
           }
         });
       });
@@ -331,6 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const id = e.currentTarget.getAttribute('data-id');
           await fetch(`/api/incidents/${id}/resolve`, { method: 'POST' });
           loadIncidents();
+          loadExecutiveReport();
         });
       });
     } catch (err) {
@@ -435,5 +541,226 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       alert('Error guardando datos bancarios');
     }
+  });
+
+  // ==========================================
+  // INFORMES HABITAOPS (GOOGLE DRIVE & CORREO)
+  // ==========================================
+  const btnToggleNewHop = document.getElementById('btn-toggle-new-habitaops');
+  const btnCancelNewHop = document.getElementById('btn-cancel-new-hop');
+  const formNewHopContainer = document.getElementById('form-new-hop-container');
+  const formNewHop = document.getElementById('form-new-habitaops');
+
+  btnToggleNewHop?.addEventListener('click', () => {
+    if (formNewHopContainer) {
+      const isHidden = formNewHopContainer.style.display === 'none';
+      formNewHopContainer.style.display = isHidden ? 'block' : 'none';
+      const dateInput = document.getElementById('hop-date');
+      if (isHidden && dateInput && !dateInput.value) {
+        dateInput.value = new Date().toISOString().split('T')[0];
+      }
+    }
+  });
+
+  btnCancelNewHop?.addEventListener('click', () => {
+    if (formNewHopContainer) formNewHopContainer.style.display = 'none';
+  });
+
+  formNewHop?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = {
+      title: document.getElementById('hop-title').value.trim(),
+      category: document.getElementById('hop-category').value,
+      reportDate: document.getElementById('hop-date').value,
+      status: document.getElementById('hop-status').value,
+      driveUrl: document.getElementById('hop-url').value.trim(),
+      observations: document.getElementById('hop-obs').value.trim()
+    };
+
+    try {
+      const res = await fetch('/api/habitaops', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        formNewHop.reset();
+        if (formNewHopContainer) formNewHopContainer.style.display = 'none';
+        loadHabitaOps();
+        loadExecutiveReport();
+      } else {
+        alert(data.message || 'Error al guardar informe HabitaOps');
+      }
+    } catch (err) {
+      alert('Error de red al guardar informe HabitaOps');
+    }
+  });
+
+  async function loadHabitaOps() {
+    try {
+      const res = await fetch('/api/habitaops');
+      const data = await res.json();
+      const tbody = document.querySelector('#table-habitaops tbody');
+      const reports = data.reports || [];
+
+      if (!tbody) return;
+
+      if (!reports || reports.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No hay informes de HabitaOps vinculados aún.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = reports.map(r => `
+        <tr>
+          <td><span class="badge badge-info">${r.reportDate}</span></td>
+          <td><strong>${r.title}</strong></td>
+          <td><span class="badge badge-emerald">${r.category}</span></td>
+          <td>
+            <span class="badge ${r.status === 'Conforme' ? 'badge-success' : r.status === 'Con Observaciones' ? 'badge-warning' : 'badge-danger'}">
+              ${r.status}
+            </span>
+          </td>
+          <td><div style="font-size: 0.8rem; color: #94a3b8; max-width: 250px; line-height: 1.3;">${r.observations || '-'}</div></td>
+          <td>
+            <a href="${r.driveUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline" style="color: var(--accent-emerald);">
+              <i class="fa-brands fa-google-drive"></i> Abrir en Drive
+            </a>
+          </td>
+          <td>
+            <button class="btn btn-sm btn-outline text-danger delete-hop" data-id="${r.id}" title="Eliminar informe">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `).join('');
+
+      document.querySelectorAll('.delete-hop').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.currentTarget.getAttribute('data-id');
+          if (confirm('¿Deseas desvincular este informe de HabitaOps?')) {
+            await fetch(`/api/habitaops/${id}`, { method: 'DELETE' });
+            loadHabitaOps();
+            loadExecutiveReport();
+          }
+        });
+      });
+    } catch (err) {
+      console.error('Error cargando informes HabitaOps:', err);
+    }
+  }
+
+  // ======================================================================
+  // INFORME EJECUTIVO CONSOLIDADO PARA LA COMUNIDAD & LIBERACIÓN DE FACTURA
+  // ======================================================================
+  async function loadExecutiveReport() {
+    try {
+      const res = await fetch('/api/reports/executive-summary');
+      const data = await res.json();
+      if (!data.success) return;
+
+      const dateNowStr = new Date().toLocaleDateString('es-CL', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+      const reportDateElem = document.getElementById('report-date-now');
+      if (reportDateElem) reportDateElem.textContent = dateNowStr;
+
+      const m = data.metrics || {};
+      const kpiMeetings = document.getElementById('kpi-total-meetings');
+      const kpiSubMeetings = document.getElementById('kpi-sub-meetings');
+      const kpiIncidents = document.getElementById('kpi-total-incidents');
+      const kpiSubIncidents = document.getElementById('kpi-sub-incidents');
+      const kpiHabitaOps = document.getElementById('kpi-total-habitaops');
+      const kpiEffectiveness = document.getElementById('kpi-effectiveness');
+
+      if (kpiMeetings) kpiMeetings.textContent = m.totalAppointments || 0;
+      if (kpiSubMeetings) kpiSubMeetings.textContent = `${m.resolvedAppointments || 0} resueltas (${m.appointmentResolutionRate || 100}%)`;
+      if (kpiIncidents) kpiIncidents.textContent = m.totalIncidents || 0;
+      if (kpiSubIncidents) kpiSubIncidents.textContent = `${m.resolvedIncidents || 0} resueltas (${m.incidentResolutionRate || 100}%)`;
+      if (kpiHabitaOps) kpiHabitaOps.textContent = m.totalHabitaOps || 0;
+
+      const totalItems = (m.totalAppointments || 0) + (m.totalIncidents || 0);
+      const totalResolved = (m.resolvedAppointments || 0) + (m.resolvedIncidents || 0);
+      const globalRate = totalItems > 0 ? Math.round((totalResolved / totalItems) * 100) : 100;
+      if (kpiEffectiveness) kpiEffectiveness.textContent = `${globalRate}%`;
+
+      // Tabla de reuniones del informe
+      const meetingsTbody = document.querySelector('#report-table-meetings tbody');
+      if (meetingsTbody) {
+        if (!data.appointments || data.appointments.length === 0) {
+          meetingsTbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No se registraron reuniones en el período.</td></tr>';
+        } else {
+          meetingsTbody.innerHTML = data.appointments.map(a => `
+            <tr>
+              <td><strong>${a.dateTime || '-'}</strong></td>
+              <td>${a.clientName}</td>
+              <td>${a.unitNumber || 'Por Especificar'}</td>
+              <td>${a.asunto || a.serviceType}</td>
+              <td><strong>${a.attendedBy || 'Por Asignar'}</strong></td>
+              <td>
+                <span class="badge ${a.status === 'Realizada' ? 'badge-success' : a.status === 'Cancelada' ? 'badge-danger' : 'badge-warning'}">
+                  ${a.followUpStatus || a.status}
+                </span>
+              </td>
+              <td><em>${a.resolution || 'En proceso de atención y seguimiento.'}</em></td>
+            </tr>
+          `).join('');
+        }
+      }
+
+      // Tabla de incidencias del informe
+      const incidentsTbody = document.querySelector('#report-table-incidents tbody');
+      if (incidentsTbody) {
+        if (!data.incidents || data.incidents.length === 0) {
+          incidentsTbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No se registraron incidencias en el período.</td></tr>';
+        } else {
+          incidentsTbody.innerHTML = data.incidents.map(i => `
+            <tr>
+              <td><code>${i.id}</code></td>
+              <td>${i.createdAt ? new Date(i.createdAt).toLocaleDateString('es-CL') : '-'}</td>
+              <td><strong>${i.clientName}</strong> (Depto ${i.unitNumber})</td>
+              <td>${i.description}</td>
+              <td><span class="badge ${i.priority === 'Alta' ? 'badge-danger' : 'badge-info'}">${i.priority}</span></td>
+              <td><span class="badge ${i.status === 'Resuelto' ? 'badge-success' : 'badge-warning'}">${i.status}</span></td>
+            </tr>
+          `).join('');
+        }
+      }
+
+      // Tabla de HabitaOps del informe
+      const hopTbody = document.querySelector('#report-table-habitaops tbody');
+      if (hopTbody) {
+        if (!data.habitaOpsReports || data.habitaOpsReports.length === 0) {
+          hopTbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No se vincularon informes de HabitaOps en el período.</td></tr>';
+        } else {
+          hopTbody.innerHTML = data.habitaOpsReports.map(h => `
+            <tr>
+              <td><strong>${h.reportDate}</strong></td>
+              <td>${h.title}</td>
+              <td><span class="badge badge-emerald">${h.category}</span></td>
+              <td><span class="badge ${h.status === 'Conforme' ? 'badge-success' : 'badge-warning'}">${h.status}</span></td>
+              <td>${h.observations || 'Sin observaciones adicionales.'}</td>
+              <td>
+                <a href="${h.driveUrl}" target="_blank" rel="noopener noreferrer" style="color: #047857; font-weight: 600; text-decoration: underline;">
+                  Verificar en Drive
+                </a>
+              </td>
+            </tr>
+          `).join('');
+        }
+      }
+    } catch (err) {
+      console.error('Error cargando informe ejecutivo:', err);
+    }
+  }
+
+  document.getElementById('btn-print-report')?.addEventListener('click', () => {
+    window.print();
+  });
+
+  document.getElementById('btn-refresh-report')?.addEventListener('click', () => {
+    loadExecutiveReport();
   });
 });

@@ -35,11 +35,19 @@
         </button>
         <button class="nav-item" data-tab="tab-appointments">
           <i class="fa-solid fa-calendar-check"></i>
-          <span>Reuniones Agendadas</span>
+          <span>Reuniones & CRM</span>
         </button>
         <button class="nav-item" data-tab="tab-incidents">
           <i class="fa-solid fa-triangle-exclamation"></i>
-          <span>Reportes de Comunidad</span>
+          <span>Reportes Comunidad</span>
+        </button>
+        <button class="nav-item" data-tab="tab-habitaops">
+          <i class="fa-solid fa-folder-tree"></i>
+          <span>Informes HabitaOps</span>
+        </button>
+        <button class="nav-item" data-tab="tab-reports">
+          <i class="fa-solid fa-file-invoice-dollar"></i>
+          <span>Informe para Comunidad</span>
         </button>
         <button class="nav-item" data-tab="tab-vouchers">
           <i class="fa-solid fa-ticket"></i>
@@ -230,16 +238,17 @@
                 <thead>
                   <tr>
                     <th>ID</th>
-                    <th>Residente / Copropietario</th>
+                    <th>Residente</th>
                     <th>Depto</th>
-                    <th>Asunto / Motivo</th>
+                    <th>Asunto</th>
                     <th>Fecha & Hora</th>
-                    <th>Estado</th>
-                    <th>Acción</th>
+                    <th>Responsable</th>
+                    <th>Estado / Resolución</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr><td colspan="7" class="text-center">Cargando reuniones agendadas...</td></tr>
+                  <tr><td colspan="8" class="text-center text-muted">Cargando reuniones y casos CRM...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -308,6 +317,247 @@
                   <tr><td colspan="7" class="text-center">Cargando incidencias reportadas...</td></tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: Informes HabitaOps -->
+      <section class="tab-content" id="tab-habitaops">
+        <div class="card">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <h3><i class="fa-solid fa-folder-tree text-emerald"></i> Informes de Operaciones HabitaOps</h3>
+              <span class="badge badge-emerald">Google Drive Link</span>
+            </div>
+            <button class="btn btn-sm btn-primary" id="btn-toggle-new-habitaops">
+              <i class="fa-solid fa-plus"></i> Vincular Informe
+            </button>
+          </div>
+          <div class="card-body">
+            <div id="form-new-hop-container" style="display: none; background: #0f172a; padding: 16px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--border-color);">
+              <h4 style="margin-bottom: 12px; font-size: 14px; color: var(--accent-emerald);"><i class="fa-solid fa-link"></i> Vincular Informe de HabitaOps (Google Drive / Correo)</h4>
+              <form id="form-new-habitaops">
+                <div class="grid grid-2">
+                  <div class="form-group">
+                    <label>Título del Informe:</label>
+                    <input type="text" id="hop-title" class="form-control" placeholder="Ej: Inspección Semanal de Bombas y Rondas" required>
+                  </div>
+                  <div class="form-group">
+                    <label>Categoría / Tipo de Operación:</label>
+                    <select id="hop-category" class="form-control">
+                      <option value="Ronda de Conserjería / Seguridad">Ronda de Conserjería / Seguridad</option>
+                      <option value="Inspección Sala de Bombas y Calderas">Inspección Sala de Bombas y Calderas</option>
+                      <option value="Mantenimiento Portón / CCTV">Mantenimiento Portón / CCTV</option>
+                      <option value="Aseo y Áreas Comunes">Aseo y Áreas Comunes</option>
+                      <option value="Inspección General">Inspección General</option>
+                      <option value="Otro">Otro</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Fecha del Informe:</label>
+                    <input type="date" id="hop-date" class="form-control" required>
+                  </div>
+                  <div class="form-group">
+                    <label>Estado / Conclusión:</label>
+                    <select id="hop-status" class="form-control">
+                      <option value="Conforme">Conforme</option>
+                      <option value="Con Observaciones">Con Observaciones</option>
+                      <option value="Acción Requerida">Acción Requerida</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group mt-2">
+                  <label>Enlace a Google Drive / Documento Web:</label>
+                  <input type="url" id="hop-url" class="form-control" placeholder="https://drive.google.com/..." required>
+                </div>
+                <div class="form-group mt-2">
+                  <label>Observaciones / Hallazgos Clave:</label>
+                  <textarea id="hop-obs" class="form-control" rows="2" placeholder="Resumen del reporte, puntos críticos atendidos..."></textarea>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 14px;">
+                  <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-check"></i> Guardar Informe</button>
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-cancel-new-hop">Cancelar</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table" id="table-habitaops">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Título del Informe</th>
+                    <th>Categoría</th>
+                    <th>Estado</th>
+                    <th>Observaciones</th>
+                    <th>Documento</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="7" class="text-center text-muted">Cargando informes HabitaOps...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: Informe para Comunidad & Liberación de Factura -->
+      <section class="tab-content" id="tab-reports">
+        <div class="report-toolbar no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: var(--bg-card); padding: 15px 20px; border-radius: 12px; border: 1px solid var(--border-color);">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <label style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted);">Período de Rendición:</label>
+            <select id="report-period-select" class="form-control" style="width: auto; display: inline-block;">
+              <option value="current">Mes en Curso (Septiembre 2026)</option>
+              <option value="all">Histórico Acumulado Completo</option>
+            </select>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn btn-outline" id="btn-refresh-report"><i class="fa-solid fa-rotate"></i> Actualizar Métricas</button>
+            <button class="btn btn-primary" id="btn-print-report"><i class="fa-solid fa-print"></i> Imprimir / Guardar como PDF</button>
+          </div>
+        </div>
+
+        <!-- Vista del Informe Ejecutivo Imprimible -->
+        <div class="executive-report-container" id="executive-report-printable">
+          <!-- Membrete Corporativo Formal -->
+          <div class="report-header">
+            <div class="report-header-left">
+              <div class="report-logo">
+                <i class="fa-solid fa-building-user"></i>
+              </div>
+              <div>
+                <h1 class="report-title">ALSI ADMINISTRACIÓN COPROPIEDAD</h1>
+                <h2 class="report-subtitle">INFORME EJECUTIVO DE GESTIÓN MENSUAL & RENDICIÓN OPERACIONAL</h2>
+                <span class="report-condo">Condominio Portada Norte VII • RUT: 77.654.321-K</span>
+              </div>
+            </div>
+            <div class="report-header-right">
+              <div class="report-meta-badge">LIBERACIÓN DE FACTURA</div>
+              <p><strong>Fecha de Emisión:</strong> <span id="report-date-now">-</span></p>
+              <p><strong>Período:</strong> <span id="report-period-label">Septiembre 2026</span></p>
+              <p><strong>Contacto:</strong> contactoalsiadministracion@gmail.com</p>
+            </div>
+          </div>
+
+          <!-- KPI Cards -->
+          <div class="report-kpi-grid">
+            <div class="report-kpi-card">
+              <span class="kpi-label">Reuniones de Atención</span>
+              <div class="kpi-value text-emerald" id="kpi-total-meetings">0</div>
+              <span class="kpi-sub" id="kpi-sub-meetings">0 resueltas</span>
+            </div>
+            <div class="report-kpi-card">
+              <span class="kpi-label">Incidencias de Comunidad</span>
+              <div class="kpi-value text-blue" id="kpi-total-incidents">0</div>
+              <span class="kpi-sub" id="kpi-sub-incidents">0 resueltas</span>
+            </div>
+            <div class="report-kpi-card">
+              <span class="kpi-label">Informes HabitaOps</span>
+              <div class="kpi-value text-amber" id="kpi-total-habitaops">0</div>
+              <span class="kpi-sub">Rondas e inspecciones Drive</span>
+            </div>
+            <div class="report-kpi-card">
+              <span class="kpi-label">Efectividad de Resolución</span>
+              <div class="kpi-value text-purple" id="kpi-effectiveness">100%</div>
+              <span class="kpi-sub">Casos cerrados favorablemente</span>
+            </div>
+          </div>
+
+          <!-- Sección 1: Reuniones de Atención y Resoluciones -->
+          <div class="report-section">
+            <h3 class="section-title"><i class="fa-solid fa-calendar-check text-emerald"></i> 1. Reuniones con Copropietarios, Seguimiento CRM y Acuerdos</h3>
+            <p class="section-desc">Detalle de reuniones gestionadas presencial y virtualmente, profesional a cargo de la atención y resolución del caso.</p>
+            <div class="table-responsive">
+              <table class="report-table" id="report-table-meetings">
+                <thead>
+                  <tr>
+                    <th>Fecha & Bloque</th>
+                    <th>Residente</th>
+                    <th>Depto</th>
+                    <th>Asunto / Motivo</th>
+                    <th>Responsable ALSI</th>
+                    <th>Estado</th>
+                    <th>Resolución / Acuerdos Pactados</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="7" class="text-center text-muted">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Sección 2: Incidencias y Mantenimientos -->
+          <div class="report-section mt-4">
+            <h3 class="section-title"><i class="fa-solid fa-triangle-exclamation text-emerald"></i> 2. Reportes e Incidencias de la Comunidad Solucionadas</h3>
+            <p class="section-desc">Tickets operacionales de portón, salas técnicas, conserjería y áreas comunes reportados y atendidos.</p>
+            <div class="table-responsive">
+              <table class="report-table" id="report-table-incidents">
+                <thead>
+                  <tr>
+                    <th>Ticket ID</th>
+                    <th>Fecha</th>
+                    <th>Informante / Depto</th>
+                    <th>Descripción de la Incidencia</th>
+                    <th>Prioridad</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="6" class="text-center text-muted">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Sección 3: Informes HabitaOps -->
+          <div class="report-section mt-4">
+            <h3 class="section-title"><i class="fa-solid fa-folder-tree text-emerald"></i> 3. Informes Técnicos y Rondas Operacionales HabitaOps Vinculados</h3>
+            <p class="section-desc">Auditorías periódicas de bombas, rondas de seguridad y listas de chequeo preventivo alojadas en Google Drive.</p>
+            <div class="table-responsive">
+              <table class="report-table" id="report-table-habitaops">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Informe Técnico</th>
+                    <th>Categoría</th>
+                    <th>Estado</th>
+                    <th>Observaciones Operativas</th>
+                    <th>Enlace Verificación</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="6" class="text-center text-muted">Cargando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Sección 4: Visto Bueno Formal y Liberación de Factura -->
+          <div class="report-sign-section">
+            <div class="sign-notice">
+              <h4><i class="fa-solid fa-signature text-emerald"></i> Dictamen y Aprobación del Comité de Administración</h4>
+              <p>Por el presente instrumento, el Comité de Administración de <strong>Condominio Portada Norte VII</strong> certifica la recepción a entera conformidad de las labores de administración, atención de copropietarios, gestión de incidencias e inspecciones operacionales HabitaOps expuestas en este informe, autorizando la <strong>emisión, pago y liberación de la factura mensual de honorarios de administración</strong> correspondiente al período.</p>
+            </div>
+            <div class="sign-grid">
+              <div class="sign-box">
+                <div class="sign-line"></div>
+                <strong>Jorge Llanos / ALSI Adm.</strong>
+                <span>Administrador de Copropiedad</span>
+              </div>
+              <div class="sign-box">
+                <div class="sign-line"></div>
+                <strong>Presidente Comité de Administración</strong>
+                <span>Condominio Portada Norte VII</span>
+              </div>
+              <div class="sign-box">
+                <div class="sign-line"></div>
+                <strong>Tesorero / Secretario Comité</strong>
+                <span>Condominio Portada Norte VII</span>
+              </div>
             </div>
           </div>
         </div>
@@ -393,6 +643,50 @@
         </div>
       </section>
     </main>
+  <!-- Modal CRM Seguimiento de Reunión -->
+  <div class="modal-backdrop" id="modal-crm-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h3 id="crm-modal-title"><i class="fa-solid fa-user-check text-emerald"></i> Seguimiento CRM de Reunión</h3>
+          <span id="crm-modal-subtitle" class="text-muted" style="font-size: 0.85rem;">ID de Cita: -</span>
+        </div>
+        <button class="btn-close" id="btn-close-crm-modal">&times;</button>
+      </div>
+      <form id="form-crm-modal">
+        <input type="hidden" id="crm-apt-id">
+        <div class="modal-body">
+          <div class="grid grid-2">
+            <div class="form-group">
+              <label>¿Quién atendió la reunión? (Responsable):</label>
+              <input type="text" id="crm-attended-by" class="form-control" placeholder="Ej: Jorge Llanos (Administrador) o María José (Supervisora)" required>
+            </div>
+            <div class="form-group">
+              <label>Estado del Seguimiento / Caso:</label>
+              <select id="crm-followup-status" class="form-control">
+                <option value="Agendada">Agendada (Pendiente)</option>
+                <option value="En Gestión">En Gestión / En Proceso</option>
+                <option value="Realizada / Resuelta">Realizada / Resuelta</option>
+                <option value="No Asistió">No Asistió / Ausente</option>
+                <option value="Cancelada">Cancelada</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group mt-3">
+            <label>Resolución al Caso / Acuerdos Pactados con el Residente:</label>
+            <textarea id="crm-resolution" class="form-control" rows="3" placeholder="Detalla los acuerdos alcanzados, soluciones aplicadas o compromisos tomados con el copropietario..." required></textarea>
+          </div>
+          <div class="form-group mt-3">
+            <label>Notas Internas de Seguimiento (Opcional):</label>
+            <textarea id="crm-notes" class="form-control" rows="2" placeholder="Observaciones adicionales, antecedentes o recordatorios internos..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; padding: 16px; border-top: 1px solid var(--border-color);">
+          <button type="button" class="btn btn-outline" id="btn-cancel-crm">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Guardar Seguimiento</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <script src="app.js"></script>
