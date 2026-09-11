@@ -82,6 +82,35 @@ function readDb() {
   db.settings = db.settings || {};
   db.habitaOpsReports = db.habitaOpsReports || [];
 
+  // Si habitaOpsReports está vacío pero existen en seed, inicializarlos en el volumen
+  if ((!db.habitaOpsReports || db.habitaOpsReports.length === 0) && fs.existsSync(SEED_STORE_PATH)) {
+    try {
+      const seedRaw = fs.readFileSync(SEED_STORE_PATH, 'utf-8');
+      const seedDb = JSON.parse(seedRaw);
+      let changed = false;
+      if (seedDb.habitaOpsReports && seedDb.habitaOpsReports.length > 0) {
+        db.habitaOpsReports = seedDb.habitaOpsReports;
+        changed = true;
+      }
+      if (seedDb.appointments && seedDb.appointments.length > 0 && db.appointments) {
+        seedDb.appointments.forEach(seedApt => {
+          const target = db.appointments.find(a => a.id === seedApt.id);
+          if (target && !target.attendedBy && seedApt.attendedBy) {
+            target.attendedBy = seedApt.attendedBy;
+            target.followUpStatus = seedApt.followUpStatus;
+            target.resolution = seedApt.resolution;
+            target.resolutionDate = seedApt.resolutionDate;
+            target.status = seedApt.status;
+            changed = true;
+          }
+        });
+      }
+      if (changed) {
+        writeDb(db);
+      }
+    } catch (e) {}
+  }
+
   return db;
 }
 
