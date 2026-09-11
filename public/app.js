@@ -77,6 +77,12 @@ document.addEventListener('DOMContentLoaded', () => {
   checkStatus();
   statusPollTimer = setInterval(checkStatus, 3000);
 
+  // Pre-cargar todas las secciones de datos inmediatamente
+  loadAppointments();
+  loadIncidents();
+  loadVouchers();
+  loadBanking();
+
   document.getElementById('btn-reset-qr')?.addEventListener('click', async () => {
     if (confirm('¿Deseas reiniciar la sesión de WhatsApp y generar un nuevo código QR?')) {
       try {
@@ -95,6 +101,95 @@ document.addEventListener('DOMContentLoaded', () => {
     loadAppointments();
     loadIncidents();
     loadVouchers();
+    loadBanking();
+  });
+
+  // Formularios manuales de Citas e Incidencias
+  const btnToggleNewApt = document.getElementById('btn-toggle-new-apt');
+  const btnCancelNewApt = document.getElementById('btn-cancel-new-apt');
+  const formNewAptContainer = document.getElementById('form-new-apt-container');
+  const formNewApt = document.getElementById('form-new-appointment');
+
+  btnToggleNewApt?.addEventListener('click', () => {
+    if (formNewAptContainer) {
+      formNewAptContainer.style.display = formNewAptContainer.style.display === 'none' ? 'block' : 'none';
+    }
+  });
+
+  btnCancelNewApt?.addEventListener('click', () => {
+    if (formNewAptContainer) formNewAptContainer.style.display = 'none';
+  });
+
+  formNewApt?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = {
+      clientName: document.getElementById('apt-name').value.trim(),
+      clientPhone: document.getElementById('apt-phone').value.trim(),
+      unitNumber: document.getElementById('apt-unit').value.trim(),
+      dateTime: document.getElementById('apt-datetime').value.trim(),
+      asunto: document.getElementById('apt-subject').value.trim()
+    };
+
+    try {
+      const res = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        formNewApt.reset();
+        if (formNewAptContainer) formNewAptContainer.style.display = 'none';
+        loadAppointments();
+      } else {
+        alert(data.message || 'Error al agendar reunión');
+      }
+    } catch (err) {
+      alert('Error de conexión al agendar');
+    }
+  });
+
+  const btnToggleNewInc = document.getElementById('btn-toggle-new-inc');
+  const btnCancelNewInc = document.getElementById('btn-cancel-new-inc');
+  const formNewIncContainer = document.getElementById('form-new-inc-container');
+  const formNewInc = document.getElementById('form-new-incident');
+
+  btnToggleNewInc?.addEventListener('click', () => {
+    if (formNewIncContainer) {
+      formNewIncContainer.style.display = formNewIncContainer.style.display === 'none' ? 'block' : 'none';
+    }
+  });
+
+  btnCancelNewInc?.addEventListener('click', () => {
+    if (formNewIncContainer) formNewIncContainer.style.display = 'none';
+  });
+
+  formNewInc?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = {
+      clientName: document.getElementById('inc-name').value.trim(),
+      unitNumber: document.getElementById('inc-unit').value.trim(),
+      priority: document.getElementById('inc-priority').value,
+      description: document.getElementById('inc-desc').value.trim()
+    };
+
+    try {
+      const res = await fetch('/api/incidents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        formNewInc.reset();
+        if (formNewIncContainer) formNewIncContainer.style.display = 'none';
+        loadIncidents();
+      } else {
+        alert(data.message || 'Error al registrar reporte');
+      }
+    } catch (err) {
+      alert('Error de conexión al registrar reporte');
+    }
   });
 
   const chatWindow = document.getElementById('chat-window');
@@ -125,6 +220,10 @@ document.addEventListener('DOMContentLoaded', () => {
         chatHistory.push({ role: 'user', content: message });
         chatHistory.push({ role: 'assistant', content: data.reply });
         appendChatMessage('bot', data.reply, data.voucher?.qrCodeDataUrl);
+        // Sincronizar datos de reuniones e incidencias si cambiaron durante el chat
+        loadAppointments();
+        loadIncidents();
+        loadVouchers();
       }
     } catch (err) {
       appendChatMessage('bot', '❌ Error comunicándose con el servidor');
@@ -166,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const tbody = document.querySelector('#table-appointments tbody');
 
       if (!data.appointments || data.appointments.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No hay reuniones agendadas aún.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No hay reuniones agendadas aún.</td></tr>';
         return;
       }
 
@@ -177,9 +276,24 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${apt.unitNumber || 'Por Especificar'}</td>
           <td>${apt.asunto || apt.serviceType}</td>
           <td><span class="badge badge-info">${apt.dateTime}</span></td>
-          <td><span class="badge badge-success">${apt.status}</span></td>
+          <td><span class="badge ${apt.status === 'Confirmada' ? 'badge-success' : apt.status === 'Cancelada' ? 'badge-danger' : 'badge-warning'}">${apt.status}</span></td>
+          <td>
+            ${apt.status !== 'Cancelada'
+              ? `<button class="btn btn-sm btn-outline cancel-appointment" data-id="${apt.id}"><i class="fa-solid fa-ban text-danger"></i> Cancelar</button>`
+              : '<span class="text-muted">Cancelada</span>'}
+          </td>
         </tr>
       `).join('');
+
+      document.querySelectorAll('.cancel-appointment').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.currentTarget.getAttribute('data-id');
+          if (confirm(`¿Deseas cancelar la reunión ${id}?`)) {
+            await fetch(`/api/appointments/${id}/cancel`, { method: 'POST' });
+            loadAppointments();
+          }
+        });
+      });
     } catch (err) {
       console.error('Error cargando citas ALSI:', err);
     }
@@ -192,7 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const tbody = document.querySelector('#table-incidents tbody');
 
       if (!data.incidents || data.incidents.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No hay incidencias reportadas.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No hay incidencias reportadas.</td></tr>';
         return;
       }
 
@@ -206,8 +320,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <td><span class="badge ${inc.status === 'Resuelto' ? 'badge-success' : 'badge-warning'}">${inc.status}</span></td>
           <td>
             ${inc.status !== 'Resuelto' 
-              ? `<button class="btn btn-sm btn-outline resolve-incident" data-id="${inc.id}"><i class="fa-solid fa-check"></i> Resolver</button>`
-              : '<span class="text-muted">Resuelto</span>'}
+              ? `<button class="btn btn-sm btn-outline resolve-incident" data-id="${inc.id}"><i class="fa-solid fa-check text-success"></i> Resolver</button>`
+              : '<span class="text-muted"><i class="fa-solid fa-check text-success"></i> Resuelto</span>'}
           </td>
         </tr>
       `).join('');

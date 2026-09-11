@@ -177,10 +177,75 @@ app.get('/api/appointments', (req, res) => {
   res.json({ success: true, appointments: db.appointments || [] });
 });
 
+app.post('/api/appointments', (req, res) => {
+  try {
+    const { clientName, clientPhone, unitNumber, asunto, dateTime, serviceType } = req.body;
+    const db = readDb();
+    const newAppointment = {
+      id: `apt-${Date.now()}`,
+      clientName: clientName || 'Residente',
+      clientPhone: clientPhone || '+56977665544',
+      unitNumber: unitNumber || 'Por Especificar',
+      asunto: asunto || 'Reunión de Atención ALSI',
+      summary: `Reunión: ${clientName || 'Residente'} - Depto ${unitNumber || ''} - Asunto: ${asunto || 'Atención'}`,
+      serviceType: serviceType || 'Reunión Presencial de Administración ALSI',
+      propertyAddress: 'Condominio Portada Norte VII',
+      dateTime: dateTime || 'Lunes 14 de septiembre (10:00 a 10:30 hrs)',
+      status: 'Confirmada',
+      paymentStatus: 'Confirmada (Gratuita)',
+      createdAt: new Date().toISOString()
+    };
+    db.appointments.unshift(newAppointment);
+    writeDb(db);
+    res.json({ success: true, appointment: newAppointment });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/appointments/:id/cancel', (req, res) => {
+  const { id } = req.params;
+  const db = readDb();
+  const item = (db.appointments || []).find(a => a.id === id);
+  if (item) {
+    item.status = 'Cancelada';
+    item.canceledAt = new Date().toISOString();
+    writeDb(db);
+    return res.json({ success: true, appointment: item });
+  }
+  res.status(404).json({ success: false, message: 'Cita no encontrada' });
+});
+
 // Incidencias / Reportes de Comunidad
 app.get('/api/incidents', (req, res) => {
   const db = readDb();
   res.json({ success: true, incidents: db.incidents || [] });
+});
+
+app.post('/api/incidents', (req, res) => {
+  try {
+    const { clientName, unitNumber, description, priority = 'Normal', fullText } = req.body;
+    const db = readDb();
+    const ticketId = `INC-${Math.floor(100000 + Math.random() * 900000)}`;
+    const newIncident = {
+      id: ticketId,
+      condoName: 'Condominio Portada Norte VII',
+      clientName: clientName || 'Residente Copropietario',
+      unitNumber: unitNumber || 'Por Especificar',
+      description: description || 'Reporte de comunidad',
+      fullText: fullText || description || '',
+      status: 'Pendiente',
+      priority: priority || 'Normal',
+      adminEmail: 'contactoalsiadministracion@gmail.com',
+      industry: 'alsi',
+      createdAt: new Date().toISOString()
+    };
+    db.incidents.unshift(newIncident);
+    writeDb(db);
+    res.json({ success: true, incident: newIncident });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 app.post('/api/incidents/:id/resolve', (req, res) => {

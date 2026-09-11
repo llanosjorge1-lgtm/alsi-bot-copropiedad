@@ -183,11 +183,48 @@
       <!-- TAB 3: Appointments -->
       <section class="tab-content" id="tab-appointments">
         <div class="card">
-          <div class="card-header">
-            <h3><i class="fa-solid fa-calendar-check text-emerald"></i> Reuniones de Atención Agendadas</h3>
-            <span class="badge badge-emerald">Google Calendar Sync</span>
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <h3><i class="fa-solid fa-calendar-check text-emerald"></i> Reuniones de Atención Agendadas</h3>
+              <span class="badge badge-emerald">Google Calendar Sync</span>
+            </div>
+            <button class="btn btn-sm btn-primary" id="btn-toggle-new-apt">
+              <i class="fa-solid fa-plus"></i> Agendar Manual
+            </button>
           </div>
           <div class="card-body">
+            <div id="form-new-apt-container" style="display: none; background: #0f172a; padding: 16px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--border-color);">
+              <h4 style="margin-bottom: 12px; font-size: 14px; color: var(--accent-emerald);"><i class="fa-solid fa-calendar-plus"></i> Agendar Nueva Reunión</h4>
+              <form id="form-new-appointment">
+                <div class="grid grid-2">
+                  <div class="form-group">
+                    <label>Nombre del Residente:</label>
+                    <input type="text" id="apt-name" class="form-control" placeholder="Ej: Marta Henríquez" required>
+                  </div>
+                  <div class="form-group">
+                    <label>Teléfono WhatsApp:</label>
+                    <input type="text" id="apt-phone" class="form-control" placeholder="Ej: +56988776655">
+                  </div>
+                  <div class="form-group">
+                    <label>Departamento / Unidad:</label>
+                    <input type="text" id="apt-unit" class="form-control" placeholder="Ej: 304" required>
+                  </div>
+                  <div class="form-group">
+                    <label>Fecha y Horario:</label>
+                    <input type="text" id="apt-datetime" class="form-control" placeholder="Ej: Lunes 14 de septiembre (10:00 a 10:30 hrs)" required>
+                  </div>
+                </div>
+                <div class="form-group mt-2">
+                  <label>Asunto o Motivo:</label>
+                  <input type="text" id="apt-subject" class="form-control" placeholder="Ej: Revisión cobro fondo de reserva y gastos comunes" required>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 14px;">
+                  <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-check"></i> Guardar Cita</button>
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-cancel-new-apt">Cancelar</button>
+                </div>
+              </form>
+            </div>
+
             <div class="table-responsive">
               <table class="table" id="table-appointments">
                 <thead>
@@ -198,10 +235,11 @@
                     <th>Asunto / Motivo</th>
                     <th>Fecha & Hora</th>
                     <th>Estado</th>
+                    <th>Acción</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr><td colspan="6" class="text-center">Cargando reuniones agendadas...</td></tr>
+                  <tr><td colspan="7" class="text-center">Cargando reuniones agendadas...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -212,11 +250,47 @@
       <!-- TAB 4: Incidents -->
       <section class="tab-content" id="tab-incidents">
         <div class="card">
-          <div class="card-header">
-            <h3><i class="fa-solid fa-triangle-exclamation text-emerald"></i> Reportes de Incidencias de Comunidad</h3>
-            <span class="badge badge-danger">Tickets Portada Norte VII</span>
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <h3><i class="fa-solid fa-triangle-exclamation text-emerald"></i> Reportes de Incidencias de Comunidad</h3>
+              <span class="badge badge-danger">Tickets Portada Norte VII</span>
+            </div>
+            <button class="btn btn-sm btn-primary" id="btn-toggle-new-inc">
+              <i class="fa-solid fa-plus"></i> Nuevo Reporte
+            </button>
           </div>
           <div class="card-body">
+            <div id="form-new-inc-container" style="display: none; background: #0f172a; padding: 16px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--border-color);">
+              <h4 style="margin-bottom: 12px; font-size: 14px; color: var(--accent-emerald);"><i class="fa-solid fa-circle-exclamation"></i> Registrar Incidencia de Comunidad</h4>
+              <form id="form-new-incident">
+                <div class="grid grid-2">
+                  <div class="form-group">
+                    <label>Nombre del Residente / Informante:</label>
+                    <input type="text" id="inc-name" class="form-control" placeholder="Ej: Carolina Fuentes" required>
+                  </div>
+                  <div class="form-group">
+                    <label>Departamento / Área afectada:</label>
+                    <input type="text" id="inc-unit" class="form-control" placeholder="Ej: Depto 401 / Portón Oriente" required>
+                  </div>
+                  <div class="form-group">
+                    <label>Prioridad:</label>
+                    <select id="inc-priority" class="form-control">
+                      <option value="Normal">Normal</option>
+                      <option value="Alta">Alta</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Categoría / Falla:</label>
+                    <input type="text" id="inc-desc" class="form-control" placeholder="Ej: Falla de portón eléctrico o luminaria" required>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 14px;">
+                  <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-check"></i> Registrar Incidencia</button>
+                  <button type="button" class="btn btn-outline btn-sm" id="btn-cancel-new-inc">Cancelar</button>
+                </div>
+              </form>
+            </div>
+
             <div class="table-responsive">
               <table class="table" id="table-incidents">
                 <thead>

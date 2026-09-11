@@ -1,20 +1,67 @@
 const fs = require('fs');
 const path = require('path');
 
-const STORE_PATH = path.join(__dirname, 'data', 'store.json');
-const COMPANY_PAYMENTS_PATH = path.join(__dirname, 'data', 'company_payments.json');
+const SEED_STORE_PATH = path.join(__dirname, 'data', 'store.json');
+const SEED_PAYMENTS_PATH = path.join(__dirname, 'data', 'company_payments.json');
 
-function ensureDataDir() {
-  const dir = path.join(__dirname, 'data');
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+function getStoreDir() {
+  const volumeDir = path.join(__dirname, 'baileys_auth_info');
+  if (fs.existsSync(volumeDir)) {
+    const volDbDir = path.join(volumeDir, 'db_storage');
+    if (!fs.existsSync(volDbDir)) {
+      try {
+        fs.mkdirSync(volDbDir, { recursive: true });
+      } catch (e) {}
+    }
+    return volDbDir;
   }
+  const localDataDir = path.join(__dirname, 'data');
+  if (!fs.existsSync(localDataDir)) {
+    try {
+      fs.mkdirSync(localDataDir, { recursive: true });
+    } catch (e) {}
+  }
+  return localDataDir;
+}
+
+function getStorePath() {
+  return path.join(getStoreDir(), 'store.json');
+}
+
+function getCompanyPaymentsPath() {
+  return path.join(getStoreDir(), 'company_payments.json');
 }
 
 function readDb() {
-  ensureDataDir();
-  if (!fs.existsSync(STORE_PATH)) {
-    const initialDb = {
+  const storePath = getStorePath();
+  let db = null;
+
+  if (fs.existsSync(storePath)) {
+    try {
+      const raw = fs.readFileSync(storePath, 'utf-8');
+      db = JSON.parse(raw);
+    } catch (err) {
+      console.error("Error leyendo store.json persistente:", err);
+    }
+  }
+
+  const isEmpty = !db || ((!db.appointments || db.appointments.length === 0) && (!db.incidents || db.incidents.length === 0));
+  if (isEmpty && fs.existsSync(SEED_STORE_PATH)) {
+    try {
+      const seedRaw = fs.readFileSync(SEED_STORE_PATH, 'utf-8');
+      const seedDb = JSON.parse(seedRaw);
+      if (seedDb && ((seedDb.appointments && seedDb.appointments.length > 0) || (seedDb.incidents && seedDb.incidents.length > 0))) {
+        db = seedDb;
+        writeDb(db);
+        return db;
+      }
+    } catch (seedErr) {
+      console.error("Error cargando seed store:", seedErr);
+    }
+  }
+
+  if (!db) {
+    db = {
       appointments: [],
       vouchers: [],
       clients: [],
@@ -23,65 +70,80 @@ function readDb() {
       receipts: [],
       settings: {}
     };
-    fs.writeFileSync(STORE_PATH, JSON.stringify(initialDb, null, 2), 'utf-8');
-    return initialDb;
+    writeDb(db);
   }
 
-  try {
-    const raw = fs.readFileSync(STORE_PATH, 'utf-8');
-    const db = JSON.parse(raw);
-    db.pendingRequests = db.pendingRequests || [];
-    db.incidents = db.incidents || [];
-    db.receipts = db.receipts || [];
-    return db;
-  } catch (err) {
-    console.error("Error leyendo store.json:", err);
-    return { appointments: [], vouchers: [], clients: [], pendingRequests: [], incidents: [], receipts: [], settings: {} };
-  }
+  db.appointments = db.appointments || [];
+  db.vouchers = db.vouchers || [];
+  db.clients = db.clients || [];
+  db.pendingRequests = db.pendingRequests || [];
+  db.incidents = db.incidents || [];
+  db.receipts = db.receipts || [];
+  db.settings = db.settings || {};
+
+  return db;
 }
 
 function writeDb(data) {
-  ensureDataDir();
   try {
-    fs.writeFileSync(STORE_PATH, JSON.stringify(data, null, 2), 'utf-8');
+    const storePath = getStorePath();
+    fs.writeFileSync(storePath, JSON.stringify(data, null, 2), 'utf-8');
+    if (storePath !== SEED_STORE_PATH && fs.existsSync(path.join(__dirname, 'data'))) {
+      try {
+        fs.writeFileSync(SEED_STORE_PATH, JSON.stringify(data, null, 2), 'utf-8');
+      } catch (e) {}
+    }
   } catch (err) {
     console.error("Error escribiendo store.json:", err);
   }
 }
 
 function readCompanyPayments() {
-  ensureDataDir();
-  if (!fs.existsSync(COMPANY_PAYMENTS_PATH)) {
-    const defaultPayments = {
-      alsi: {
-        companyId: "alsi",
-        companyName: "ALSI Administración - Condominio Portada Norte VII",
-        bankName: "Banco de Chile",
-        accountType: "Cuenta Corriente",
-        accountNumber: "99-12345-01",
-        rut: "77.654.321-K",
-        holderName: "ALSI Administración Copropiedad",
-        emailNotification: "contactoalsiadministracion@gmail.com",
-        instructions: "Transfiera el valor de su gasto común indicando su número de departamento en el asunto."
-      }
-    };
-    fs.writeFileSync(COMPANY_PAYMENTS_PATH, JSON.stringify(defaultPayments, null, 2), 'utf-8');
-    return defaultPayments;
+  const payPath = getCompanyPaymentsPath();
+  if (fs.existsSync(payPath)) {
+    try {
+      const raw = fs.readFileSync(payPath, 'utf-8');
+      return JSON.parse(raw);
+    } catch (err) {
+      console.error("Error leyendo company_payments persistente:", err);
+    }
   }
 
-  try {
-    const raw = fs.readFileSync(COMPANY_PAYMENTS_PATH, 'utf-8');
-    return JSON.parse(raw);
-  } catch (err) {
-    console.error("Error leyendo company_payments.json:", err);
-    return {};
+  if (fs.existsSync(SEED_PAYMENTS_PATH)) {
+    try {
+      const raw = fs.readFileSync(SEED_PAYMENTS_PATH, 'utf-8');
+      const data = JSON.parse(raw);
+      writeCompanyPayments(data);
+      return data;
+    } catch (err) {}
   }
+
+  const defaultPayments = {
+    alsi: {
+      companyId: "alsi",
+      companyName: "ALSI Administración - Condominio Portada Norte VII",
+      bankName: "Banco de Chile",
+      accountType: "Cuenta Corriente",
+      accountNumber: "99-12345-01",
+      rut: "77.654.321-K",
+      holderName: "ALSI Administración Copropiedad",
+      emailNotification: "contactoalsiadministracion@gmail.com",
+      instructions: "Transfiera el valor de su gasto común indicando su número de departamento en el asunto."
+    }
+  };
+  writeCompanyPayments(defaultPayments);
+  return defaultPayments;
 }
 
 function writeCompanyPayments(data) {
-  ensureDataDir();
   try {
-    fs.writeFileSync(COMPANY_PAYMENTS_PATH, JSON.stringify(data, null, 2), 'utf-8');
+    const payPath = getCompanyPaymentsPath();
+    fs.writeFileSync(payPath, JSON.stringify(data, null, 2), 'utf-8');
+    if (payPath !== SEED_PAYMENTS_PATH && fs.existsSync(path.join(__dirname, 'data'))) {
+      try {
+        fs.writeFileSync(SEED_PAYMENTS_PATH, JSON.stringify(data, null, 2), 'utf-8');
+      } catch (e) {}
+    }
   } catch (err) {
     console.error("Error escribiendo company_payments.json:", err);
   }

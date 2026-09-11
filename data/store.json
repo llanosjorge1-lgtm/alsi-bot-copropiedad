@@ -1,0 +1,199 @@
+{
+  "appointments": [
+    {
+      "id": "apt-1726050001",
+      "clientName": "Marta Henríquez",
+      "clientPhone": "+56988776655",
+      "unitNumber": "304",
+      "asunto": "Revisión liquidación fondo de reserva y prorrateo de gas común",
+      "summary": "Reunión: Marta Henríquez - Depto 304 - Asunto: Revisión fondo de reserva",
+      "serviceType": "Reunión Presencial de Administración ALSI",
+      "propertyAddress": "Condominio Portada Norte VII",
+      "dateTime": "Lunes 14 de septiembre de 2026 (10:00 a 10:30 hrs)",
+      "slotId": 3,
+      "startIso": "2026-09-14T10:00:00-03:00",
+      "endIso": "2026-09-14T10:30:00-03:00",
+      "status": "Confirmada",
+      "paymentStatus": "Confirmada (Gratuita)",
+      "createdAt": "2026-09-11T10:15:00.000Z"
+    },
+    {
+      "id": "apt-1726050002",
+      "clientName": "Jorge Llanos",
+      "clientPhone": "+56977665544",
+      "unitNumber": "502",
+      "asunto": "Coordinación entrega y duplicado llave bodega poniente",
+      "summary": "Reunión: Jorge Llanos - Depto 502 - Asunto: Coordinación entrega llave bodega",
+      "serviceType": "Reunión Presencial de Administración ALSI",
+      "propertyAddress": "Condominio Portada Norte VII",
+      "dateTime": "Martes 15 de septiembre de 2026 (11:30 a 12:00 hrs)",
+      "slotId": 5,
+      "startIso": "2026-09-15T11:30:00-03:00",
+      "endIso": "2026-09-15T12:00:00-03:00",
+      "status": "Confirmada",
+      "paymentStatus": "Confirmada (Gratuita)",
+      "createdAt": "2026-09-11T11:30:00.000Z"
+    },
+    {
+      "id": "apt-1726050003",
+      "clientName": "Carlos Bustamante",
+      "clientPhone": "+56999881122",
+      "unitNumber": "102",
+      "asunto": "Solicitud protocolo mudanza fin de semana y estacionamiento de carga",
+      "summary": "Reunión: Carlos Bustamante - Depto 102 - Asunto: Protocolo mudanza",
+      "serviceType": "Reunión Virtual Videollamada (Google Meet)",
+      "propertyAddress": "Condominio Portada Norte VII",
+      "dateTime": "Miércoles 16 de septiembre de 2026 (16:00 a 16:30 hrs)",
+      "slotId": 10,
+      "startIso": "2026-09-16T16:00:00-03:00",
+      "endIso": "2026-09-16T16:30:00-03:00",
+      "status": "Confirmada",
+      "paymentStatus": "Confirmada (Gratuita)",
+      "createdAt": "2026-09-11T09:45:00.000Z"
+    }
+  ],
+  "vouchers": [
+    {
+      "id": "vch-1726050001",
+      "code": "ALS-7A4B-3829",
+      "clientName": "Marta Henríquez (Depto 304)",
+      "clientPhone": "+56988776655",
+      "industry": "alsi",
+      "voucherType": "Pase Digital de Atención ALSI (Condominio Portada Norte VII)",
+      "discountOrAmount": "Reunión: Marta Henríquez - Depto 304 | Lunes 14 de septiembre 10:00 hrs | Gratuita ()",
+      "expirationDate": "2026-10-14",
+      "propertyAddress": "Condominio Portada Norte VII",
+      "qrDataUrl": "data:image/png;base64,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",
+      "qrCodeDataUrl": "data:image/png;base64,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",
+      "status": "Activo",
+      "createdAt": "2026-09-11T10:15:00.000Z"
+    },
+    {
+      "id": "vch-1726050002",
+      "code": "ALS-9F1C-5012",
+      "clientName": "Jorge Llanos (Depto 502)",
+      "clientPhone": "+56977665544",
+      "industry": "alsi",
+      "voucherType": "Pase Digital de Atención ALSI (Condominio Portada Norte VII)",
+      "discountOrAmount": "Reunión: Jorge Llanos - Depto 502 | Martes 15 de septiembre 11:30 hrs | Gratuita ()",
+      "expirationDate": "2026-10-15",
+      "propertyAddress": "Condominio Portada Norte VII",
+      "qrDataUrl": "data:image/png;base64,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",
+      "qrCodeDataUrl": "data:image/png;base64,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",
+      "status": "Activo",
+      "createdAt": "2026-09-11T11:30:00.000Z"
+    },
+    {
+      "id": "vch-1726050003",
+      "code": "ALS-3D8E-7741",
+      "clientName": "Carlos Bustamante (Depto 102)",
+      "clientPhone": "+56999881122",
+      "industry": "alsi",
+      "voucherType": "Pase Digital de Atención ALSI (Condominio Portada Norte VII)",
+      "discountOrAmount": "Reunión: Carlos Bustamante - Depto 102 | Miércoles 16 de septiembre 16:00 hrs | Gratuita ()",
+      "expirationDate": "2026-10-16",
+      "propertyAddress": "Condominio Portada Norte VII",
+      "qrDataUrl": "data:image/png;base64,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",
+      "qrCodeDataUrl": "data:image/png;base64,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",
+      "status": "Activo",
+      "createdAt": "2026-09-11T09:45:00.000Z"
+    }
+  ],
+  "clients": [
+    {
+      "id": "cli-1",
+      "name": "Marta Henríquez",
+      "unitNumber": "304",
+      "phone": "+56988776655"
+    },
+    {
+      "id": "cli-2",
+      "name": "Jorge Llanos",
+      "unitNumber": "502",
+      "phone": "+56977665544"
+    },
+    {
+      "id": "cli-3",
+      "name": "Carlos Bustamante",
+      "unitNumber": "102",
+      "phone": "+56999881122"
+    },
+    {
+      "id": "cli-4",
+      "name": "Carolina Fuentes",
+      "unitNumber": "401",
+      "phone": "+56966554433"
+    },
+    {
+      "id": "cli-5",
+      "name": "Gonzalo Morales",
+      "unitNumber": "305",
+      "phone": "+56955443322"
+    },
+    {
+      "id": "cli-6",
+      "name": "Roberto Silva",
+      "unitNumber": "104",
+      "phone": "+56944332211"
+    }
+  ],
+  "pendingRequests": [
+    {
+      "id": "req-1726050010",
+      "condoName": "Condominio Portada Norte VII",
+      "clientName": "Patricia Vergara",
+      "unitNumber": "206",
+      "requestType": "Consulta por Colilla de Gastos Comunes Agosto",
+      "details": "Residente solicita envío de colilla detallada por correo electrónico.",
+      "status": "Pendiente de Atención",
+      "createdAt": "2026-09-11T09:30:00.000Z"
+    }
+  ],
+  "incidents": [
+    {
+      "id": "INC-284910",
+      "condoName": "Condominio Portada Norte VII",
+      "clientName": "Carolina Fuentes",
+      "unitNumber": "401",
+      "description": "Falla de portón eléctrico: el brazo hidráulico poniente demora en cerrar y queda descalibrado 20 cm",
+      "fullText": "Hola, el portón del acceso vehicular poniente no cierra bien, queda abierto unos 20 cm.",
+      "status": "Pendiente",
+      "priority": "Alta",
+      "adminEmail": "contactoalsiadministracion@gmail.com",
+      "industry": "alsi",
+      "createdAt": "2026-09-11T08:20:00.000Z"
+    },
+    {
+      "id": "INC-193821",
+      "condoName": "Condominio Portada Norte VII",
+      "clientName": "Gonzalo Morales",
+      "unitNumber": "305",
+      "description": "Falla en tolvas / ductos de basura: compuerta piso 3 no ajusta herméticamente",
+      "fullText": "La compuerta del ducto de basura del piso 3 quedó trabada.",
+      "status": "Pendiente",
+      "priority": "Normal",
+      "adminEmail": "contactoalsiadministracion@gmail.com",
+      "industry": "alsi",
+      "createdAt": "2026-09-10T17:10:00.000Z"
+    },
+    {
+      "id": "INC-102948",
+      "condoName": "Condominio Portada Norte VII",
+      "clientName": "Roberto Silva",
+      "unitNumber": "104",
+      "description": "Falla o sonido raro desde Sala de Bombas (revisión preventiva ejecutada por técnico)",
+      "fullText": "Se sentía una vibración en las bombas de impulsión de la torre poniente.",
+      "status": "Resuelto",
+      "resolvedAt": "2026-09-11T11:00:00.000Z",
+      "priority": "Alta",
+      "adminEmail": "contactoalsiadministracion@gmail.com",
+      "industry": "alsi",
+      "createdAt": "2026-09-09T14:30:00.000Z"
+    }
+  ],
+  "receipts": [],
+  "settings": {
+    "condoName": "Condominio Portada Norte VII",
+    "adminEmail": "contactoalsiadministracion@gmail.com"
+  }
+}

@@ -35,11 +35,14 @@ function clearAuthInfo() {
     try {
       const files = fs.readdirSync(authDir);
       for (const file of files) {
+        if (file === 'db_storage' || file.startsWith('db_') || file === 'store.json' || file === 'company_payments.json') {
+          continue; // Proteger base de datos persistente en el volumen
+        }
         try {
           fs.rmSync(path.join(authDir, file), { recursive: true, force: true });
         } catch (fErr) {}
       }
-      console.log('🧹 Archivos internos de baileys_auth_info eliminados con éxito.');
+      console.log('🧹 Archivos internos de autenticación de baileys_auth_info eliminados con éxito (base de datos protegida).');
     } catch (e) {
       console.error('Error eliminando archivos de baileys_auth_info:', e.message);
     }
