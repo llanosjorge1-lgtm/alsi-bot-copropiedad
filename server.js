@@ -7,6 +7,7 @@ const { processMessage } = require('./agentEngine');
 const { 
   readDb, 
   writeDb, 
+  resetDbToZero,
   getCompanyPaymentDetails, 
   writeCompanyPayments, 
   readCompanyPayments, 
@@ -412,6 +413,23 @@ app.get('/api/reports/executive-summary', (req, res) => {
     incidents,
     habitaOpsReports,
     company
+  });
+});
+
+// Endpoint administrativo para reiniciar la base de datos a 0 (inicio oficial)
+app.all('/api/admin/reset-database-zero', (req, res) => {
+  const confirm = req.query.confirm || (req.body && req.body.confirm);
+  if (confirm !== 'alsi2026') {
+    return res.status(403).json({
+      success: false,
+      message: 'Confirmación requerida. Envíe ?confirm=alsi2026 para proceder con el reinicio a 0.'
+    });
+  }
+  const clean = resetDbToZero();
+  res.json({
+    success: true,
+    message: 'Base de datos reiniciada exitosamente a 0 para inicio oficial de Condominio Portada Norte VII.',
+    db: clean
   });
 });
 

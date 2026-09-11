@@ -112,6 +112,27 @@ document.addEventListener('DOMContentLoaded', () => {
     loadBanking();
   });
 
+  document.getElementById('btn-admin-reset-zero')?.addEventListener('click', async () => {
+    if (confirm('⚠️ ¿Estás seguro de que deseas reiniciar todos los registros a CERO (0)?\n\nSe vaciarán todas las reuniones, incidencias y reportes de prueba para iniciar la operación oficial en limpio.')) {
+      try {
+        const res = await fetch('/api/admin/reset-database-zero?confirm=alsi2026', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          alert('✅ Base de datos reiniciada a 0 exitosamente para el inicio oficial.');
+          loadAppointments();
+          loadIncidents();
+          loadHabitaOps();
+          loadExecutiveReport();
+          loadVouchers();
+        } else {
+          alert(data.message || 'Error al reiniciar base de datos');
+        }
+      } catch (err) {
+        alert('Error de conexión al reiniciar base de datos');
+      }
+    }
+  });
+
   // Formularios manuales de Citas e Incidencias
   const btnToggleNewApt = document.getElementById('btn-toggle-new-apt');
   const btnCancelNewApt = document.getElementById('btn-cancel-new-apt');

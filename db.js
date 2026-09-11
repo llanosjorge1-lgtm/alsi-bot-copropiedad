@@ -32,6 +32,36 @@ function getCompanyPaymentsPath() {
   return path.join(getStoreDir(), 'company_payments.json');
 }
 
+function resetDbToZero() {
+  const cleanDb = {
+    appointments: [],
+    vouchers: [],
+    clients: [],
+    pendingRequests: [],
+    incidents: [],
+    receipts: [],
+    habitaOpsReports: [],
+    settings: {
+      condoName: "Condominio Portada Norte VII",
+      adminEmail: "contactoalsiadministracion@gmail.com"
+    }
+  };
+  writeDb(cleanDb);
+  return cleanDb;
+}
+
+// Verificación automática de un solo disparo para inicializar en 0 en Railway
+try {
+  const zeroFlagPath = path.join(getStoreDir(), '.zero_initialized_clean');
+  if (!fs.existsSync(zeroFlagPath)) {
+    resetDbToZero();
+    fs.writeFileSync(zeroFlagPath, new Date().toISOString(), 'utf-8');
+    console.log("[DB] Base de datos reiniciada a 0 para inicio oficial de producción.");
+  }
+} catch (e) {
+  console.error("[DB] Error comprobando bandera de inicio en 0:", e);
+}
+
 function readDb() {
   const storePath = getStorePath();
   let db = null;
@@ -45,32 +75,8 @@ function readDb() {
     }
   }
 
-  const isEmpty = !db || ((!db.appointments || db.appointments.length === 0) && (!db.incidents || db.incidents.length === 0));
-  if (isEmpty && fs.existsSync(SEED_STORE_PATH)) {
-    try {
-      const seedRaw = fs.readFileSync(SEED_STORE_PATH, 'utf-8');
-      const seedDb = JSON.parse(seedRaw);
-      if (seedDb && ((seedDb.appointments && seedDb.appointments.length > 0) || (seedDb.incidents && seedDb.incidents.length > 0))) {
-        db = seedDb;
-        writeDb(db);
-        return db;
-      }
-    } catch (seedErr) {
-      console.error("Error cargando seed store:", seedErr);
-    }
-  }
-
   if (!db) {
-    db = {
-      appointments: [],
-      vouchers: [],
-      clients: [],
-      pendingRequests: [],
-      incidents: [],
-      receipts: [],
-      settings: {}
-    };
-    writeDb(db);
+    db = resetDbToZero();
   }
 
   db.appointments = db.appointments || [];
@@ -79,37 +85,11 @@ function readDb() {
   db.pendingRequests = db.pendingRequests || [];
   db.incidents = db.incidents || [];
   db.receipts = db.receipts || [];
-  db.settings = db.settings || {};
+  db.settings = db.settings || {
+    condoName: "Condominio Portada Norte VII",
+    adminEmail: "contactoalsiadministracion@gmail.com"
+  };
   db.habitaOpsReports = db.habitaOpsReports || [];
-
-  // Si habitaOpsReports está vacío pero existen en seed, inicializarlos en el volumen
-  if ((!db.habitaOpsReports || db.habitaOpsReports.length === 0) && fs.existsSync(SEED_STORE_PATH)) {
-    try {
-      const seedRaw = fs.readFileSync(SEED_STORE_PATH, 'utf-8');
-      const seedDb = JSON.parse(seedRaw);
-      let changed = false;
-      if (seedDb.habitaOpsReports && seedDb.habitaOpsReports.length > 0) {
-        db.habitaOpsReports = seedDb.habitaOpsReports;
-        changed = true;
-      }
-      if (seedDb.appointments && seedDb.appointments.length > 0 && db.appointments) {
-        seedDb.appointments.forEach(seedApt => {
-          const target = db.appointments.find(a => a.id === seedApt.id);
-          if (target && !target.attendedBy && seedApt.attendedBy) {
-            target.attendedBy = seedApt.attendedBy;
-            target.followUpStatus = seedApt.followUpStatus;
-            target.resolution = seedApt.resolution;
-            target.resolutionDate = seedApt.resolutionDate;
-            target.status = seedApt.status;
-            changed = true;
-          }
-        });
-      }
-      if (changed) {
-        writeDb(db);
-      }
-    } catch (e) {}
-  }
 
   return db;
 }
@@ -299,6 +279,7 @@ function deleteHabitaOpsReport(id) {
 module.exports = {
   readDb,
   writeDb,
+  resetDbToZero,
   readCompanyPayments,
   writeCompanyPayments,
   getCompanyPaymentDetails,
