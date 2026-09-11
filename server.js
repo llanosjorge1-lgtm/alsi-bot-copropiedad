@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const path = require('path');
-const { connectToWhatsApp, getWhatsAppStatus, resetWhatsAppConnection } = require('./whatsappBaileys');
+const { connectToWhatsApp, getWhatsAppStatus, resetWhatsAppConnection, reconnectWhatsApp } = require('./whatsappBaileys');
 const { processMessage } = require('./agentEngine');
 const { readDb, writeDb, getCompanyPaymentDetails, writeCompanyPayments, readCompanyPayments, readPendingRequests, resolvePendingRequest } = require('./db');
 const { validateAndRedeemVoucher, getVouchers } = require('./voucherService');
@@ -50,6 +50,15 @@ app.get('/qr/reset', async (req, res) => {
   }
 });
 
+app.get('/qr/reconnect', async (req, res) => {
+  try {
+    await reconnectWhatsApp();
+    res.redirect('/qr');
+  } catch (e) {
+    res.status(500).send("Error al reconectar WhatsApp: " + e.message);
+  }
+});
+
 app.get('/qr', (req, res) => {
   const status = getWhatsAppStatus();
   if (status.isConnected) {
@@ -61,10 +70,11 @@ app.get('/qr', (req, res) => {
         <title>WhatsApp Conectado - ALSI Copropiedad</title>
         <style>
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #fff; text-align: center; padding: 50px; }
-          .card { background: #1e293b; border-radius: 16px; padding: 40px; display: inline-block; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 500px; border: 1px solid #10b981; }
+          .card { background: #1e293b; border-radius: 16px; padding: 40px; display: inline-block; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 540px; border: 1px solid #10b981; }
           .icon { font-size: 60px; margin-bottom: 20px; }
           h1 { color: #10b981; margin-bottom: 10px; }
           p { color: #94a3b8; font-size: 16px; line-height: 1.5; }
+          .btn-reconnect { margin-top:20px; margin-right:10px; display:inline-block; background:#10b981; color:#fff; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:bold; font-size:14px; }
           .btn-reset { margin-top:20px; display:inline-block; background:#ef4444; color:#fff; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:bold; font-size:14px; }
         </style>
       </head>
@@ -73,7 +83,10 @@ app.get('/qr', (req, res) => {
           <div class="icon">✅</div>
           <h1>WhatsApp Business Conectado</h1>
           <p>El Agente de IA para ALSI Administración (Portada Norte VII) está vinculado y activo respondiendo mensajes 24/7 en WhatsApp.</p>
-          <a href="/qr/reset" class="btn-reset" onclick="return confirm('¿Desconectar y vincular con un nuevo número?')">🔴 Desconectar / Cambiar Número</a>
+          <div style="margin-top:24px;">
+            <a href="/qr/reconnect" class="btn-reconnect">🔄 Refrescar Conexión</a>
+            <a href="/qr/reset" class="btn-reset" onclick="return confirm('¿Desconectar y vincular con un nuevo número?')">🔴 Desconectar / Cambiar Número</a>
+          </div>
         </div>
       </body>
       </html>

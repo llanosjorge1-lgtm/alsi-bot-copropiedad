@@ -114,28 +114,24 @@ async function connectToWhatsApp(forceClean = false) {
 
     if (connection === 'close') {
       isConnecting = false;
-      const statusCode = (lastDisconnect?.error)?.output?.statusCode;
-      const isLoggedOut = statusCode === DisconnectReason.loggedOut;
-      console.log(`🔴 Conexión WhatsApp ALSI en estado: ${statusCode}`);
-
-      if (statusCode === 428) {
-        console.log('📱 QR ALSI listo y activo a la espera de ser escaneado por el usuario.');
-        return;
-      }
-
       isConnected = false;
+      const statusCode = (lastDisconnect?.error)?.output?.statusCode;
+      const isLoggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401 || statusCode === 403;
 
-      if (isLoggedOut || statusCode === 401 || statusCode === 403) {
-        console.log('⚠️ Sesión cerrada por WhatsApp. Limpiando credenciales para generar QR fresco...');
+      console.log(`🔴 Conexión WhatsApp ALSI cerrada. Código: ${statusCode}. ¿Cerrada por usuario (Logout)?: ${isLoggedOut}`);
+
+      if (isLoggedOut) {
+        console.log('⚠️ Sesión cerrada por WhatsApp (Logout definitivo). Limpiando credenciales para generar nuevo QR...');
         currentQrDataUrl = null;
         clearAuthInfo();
         setTimeout(() => connectToWhatsApp(true), 3000);
       } else {
+        // En cualquier otra desconexión (428, 515 restart, 408 timeout, caída de red): RECONECTAR AUTOMÁTICAMENTE
+        const delay = statusCode === 515 ? 1500 : 4000;
+        console.log(`⏳ Reconectando automáticamente a WhatsApp en ${delay / 1000}s usando credenciales del volumen...`);
         setTimeout(() => {
-          if (!isConnected) {
-            connectToWhatsApp(false);
-          }
-        }, 10000);
+          connectToWhatsApp(false);
+        }, delay);
       }
     } else if (connection === 'open') {
       isConnecting = false;
@@ -181,8 +177,12 @@ async function connectToWhatsApp(forceClean = false) {
         if (result && result.reply) {
           updateSessionHistory(remoteJid, textMessage, result.reply);
 
-          await waSocket.sendMessage(remoteJid, { text: result.reply }, { quoted: msg });
-          console.log(`📤 Respuesta enviada por WhatsApp ALSI a [${senderPhone}]!`);
+          try {
+            await waSocket.sendMessage(remoteJid, { text: result.reply });
+            console.log(`📤 Respuesta enviada por WhatsApp ALSI a [${senderPhone}]!`);
+          } catch (sendErr) {
+            console.error(`Error enviando mensaje de texto a [${senderPhone}]:`, sendErr.message);
+          }
 
           const qrData = result.voucher?.qrCodeDataUrl || result.voucher?.qrDataUrl;
           if (result.voucher && qrData) {
@@ -219,8 +219,24 @@ function getWhatsAppStatus() {
   };
 }
 
+async function reconnectWhatsApp() {
+  console.log('🔄 Reconectando WhatsApp ALSI manteniendo sesión existente...');
+  isConnecting = false;
+  isConnected = false;
+  if (waSocket) {
+    try {
+      waSocket.ev.removeAllListeners();
+      waSocket.end(new Error('Manual reconnect'));
+    } catch (e) {}
+    waSocket = null;
+  }
+  await connectToWhatsApp(false);
+  return { success: true, message: 'Reconexión iniciada con credenciales del volumen.' };
+}
+
 async function resetWhatsAppConnection() {
   console.log('🔄 Reiniciando sesión de WhatsApp ALSI...');
+  isConnecting = false;
   isConnected = false;
   currentQrDataUrl = null;
   if (waSocket) {
@@ -238,5 +254,6 @@ async function resetWhatsAppConnection() {
 module.exports = {
   connectToWhatsApp,
   getWhatsAppStatus,
+  reconnectWhatsApp,
   resetWhatsAppConnection
 };
