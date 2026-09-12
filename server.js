@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const path = require('path');
-const { connectToWhatsApp, getWhatsAppStatus, resetWhatsAppConnection, reconnectWhatsApp } = require('./whatsappBaileys');
+const { connectToWhatsApp, getWhatsAppStatus, resetWhatsAppConnection, reconnectWhatsApp, sendCustomWhatsAppMessage } = require('./whatsappBaileys');
 const { processMessage } = require('./agentEngine');
 const { 
   readDb, 
@@ -42,6 +42,21 @@ app.get('/api/status', (req, res) => {
 app.get('/api/whatsapp/status', (req, res) => {
   const status = getWhatsAppStatus();
   res.json(status);
+});
+
+// Envío de mensaje personalizado de WhatsApp (integración con Ordena)
+app.post('/api/send-whatsapp', async (req, res) => {
+  try {
+    const { phone, message } = req.body;
+    if (!phone || !message) {
+      return res.status(400).json({ success: false, message: "Faltan parámetros 'phone' o 'message'" });
+    }
+    const result = await sendCustomWhatsAppMessage(phone, message);
+    res.json(result);
+  } catch (err) {
+    console.error('Error enviando WhatsApp desde ALSI:', err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 // Reinicio manual de WhatsApp

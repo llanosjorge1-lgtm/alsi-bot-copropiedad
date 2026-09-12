@@ -254,9 +254,25 @@ async function resetWhatsAppConnection() {
   return { success: true, message: 'Sesión reiniciada. Escanee el nuevo QR.' };
 }
 
+async function sendCustomWhatsAppMessage(phone, message) {
+  if (!waSocket || !isConnected) {
+    throw new Error('WhatsApp no está conectado en el servidor ALSI');
+  }
+
+  let cleanPhone = String(phone).replace(/\D/g, '');
+  if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) {
+    cleanPhone = `56${cleanPhone}`;
+  }
+  const remoteJid = cleanPhone.includes('@') ? cleanPhone : `${cleanPhone}@s.whatsapp.net`;
+
+  await waSocket.sendMessage(remoteJid, { text: message });
+  return { success: true, to: remoteJid };
+}
+
 module.exports = {
   connectToWhatsApp,
   getWhatsAppStatus,
   reconnectWhatsApp,
-  resetWhatsAppConnection
+  resetWhatsAppConnection,
+  sendCustomWhatsAppMessage
 };
