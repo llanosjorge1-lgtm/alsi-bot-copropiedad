@@ -22,8 +22,39 @@ const { validateAndRedeemVoucher, getVouchers } = require('./voucherService');
 const { startReminderCron } = require('./reminderCron');
 const { verifyWebhook: verifyInstagramWebhook, handleWebhook: handleInstagramWebhook } = require('./instagramService');
 
+// API Key for server-to-server and admin authentication
+const ALSI_API_KEY = process.env.ALSI_API_KEY || 'alsi-ordena-secure-key-2026';
+
+function requireApiKey(req, res, next) {
+  const apiKey = req.headers['x-api-key'] || req.query.apiKey;
+  if (!apiKey || apiKey !== ALSI_API_KEY) {
+    return res.status(401).json({ success: false, message: 'Acceso no autorizado. API Key requerida.' });
+  }
+  next();
+}
+
 const app = express();
 const server = http.createServer(app);
+
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const cors = require('cors');
+
+app.use(helmet({ contentSecurityPolicy: false }));
+
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : true,
+  credentials: true,
+}));
+
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 60,
+  message: { success: false, message: 'Límite de solicitudes excedido. Intente en 1 minuto.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api', apiLimiter);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -45,7 +76,7 @@ app.get('/api/whatsapp/status', (req, res) => {
 });
 
 // Envío de mensaje personalizado de WhatsApp (integración con Ordena)
-app.post('/api/send-whatsapp', async (req, res) => {
+app.post('/api/send-whatsapp', requireApiKey, async (req, res) => {
   try {
     const { phone, message } = req.body;
     if (!phone || !message) {
@@ -60,7 +91,7 @@ app.post('/api/send-whatsapp', async (req, res) => {
 });
 
 // Reinicio manual de WhatsApp
-app.post('/api/reset-whatsapp', async (req, res) => {
+app.post('/api/reset-whatsapp', requireApiKey, async (req, res) => {
   try {
     const result = await resetWhatsAppConnection();
     res.json(result);
@@ -69,7 +100,7 @@ app.post('/api/reset-whatsapp', async (req, res) => {
   }
 });
 
-app.get('/qr/reset', async (req, res) => {
+app.get('/qr/reset', requireApiKey, async (req, res) => {
   try {
     await resetWhatsAppConnection();
     res.redirect('/qr');
@@ -78,7 +109,7 @@ app.get('/qr/reset', async (req, res) => {
   }
 });
 
-app.get('/qr/reconnect', async (req, res) => {
+app.get('/qr/reconnect', requireApiKey, async (req, res) => {
   try {
     await reconnectWhatsApp();
     res.redirect('/qr');
@@ -87,7 +118,7 @@ app.get('/qr/reconnect', async (req, res) => {
   }
 });
 
-app.get('/qr', (req, res) => {
+app.get('/qr', requireApiKey, (req, res) => {
   const status = getWhatsAppStatus();
   if (status.isConnected) {
     return res.send(`
@@ -231,7 +262,7 @@ app.post('/api/appointments', (req, res) => {
   }
 });
 
-app.post('/api/appointments/:id/cancel', (req, res) => {
+app.post('/api/appointments/:id/cancel', requireApiKey, (req, res) => {
   const { id } = req.params;
   const db = readDb();
   const item = (db.appointments || []).find(a => a.id === id);
@@ -245,7 +276,7 @@ app.post('/api/appointments/:id/cancel', (req, res) => {
 });
 
 // Seguimiento CRM de Reuniones (Quién tomó la reunión, estado y resolución)
-app.post('/api/appointments/:id/crm', (req, res) => {
+app.post('/api/appointments/:id/crm', requireApiKey, (req, res) => {
   const { id } = req.params;
   const result = updateAppointmentCrm(id, req.body);
   if (result.success) {
@@ -287,7 +318,7 @@ app.post('/api/incidents', (req, res) => {
   }
 });
 
-app.post('/api/incidents/:id/resolve', (req, res) => {
+app.post('/api/incidents/:id/resolve', requireApiKey, (req, res) => {
   const { id } = req.params;
   const db = readDb();
   const item = (db.incidents || []).find(i => i.id === id);
@@ -306,7 +337,7 @@ app.get('/api/vouchers', (req, res) => {
   res.json({ success: true, vouchers });
 });
 
-app.post('/api/vouchers/redeem', (req, res) => {
+app.post('/api/vouchers/redeem', requireApiKey, (req, res) => {
   const { code } = req.body;
   if (!code) return res.status(400).json({ success: false, message: "Falta parámetro 'code'" });
   const result = validateAndRedeemVoucher(code);
@@ -319,7 +350,7 @@ app.get('/api/company-payments', (req, res) => {
   res.json({ success: true, company: info });
 });
 
-app.post('/api/company-payments', (req, res) => {
+app.post('/api/company-payments', requireApiKey, (req, res) => {
   const newDetails = req.body;
   const all = readCompanyPayments();
   all.alsi = {
@@ -336,7 +367,7 @@ app.get('/api/pending-requests', (req, res) => {
   res.json({ success: true, pendingRequests: pending });
 });
 
-app.post('/api/pending-requests/:id/resolve', (req, res) => {
+app.post('/api/pending-requests/:id/resolve', requireApiKey, (req, res) => {
   const { id } = req.params;
   const result = resolvePendingRequest(id);
   res.json(result);
@@ -348,7 +379,7 @@ app.get('/api/habitaops', (req, res) => {
   res.json({ success: true, reports });
 });
 
-app.post('/api/habitaops', (req, res) => {
+app.post('/api/habitaops', requireApiKey, (req, res) => {
   try {
     const { title, reportDate, category, driveUrl, observations, status, uploadedBy } = req.body;
     if (!title) {
@@ -369,7 +400,7 @@ app.post('/api/habitaops', (req, res) => {
   }
 });
 
-app.delete('/api/habitaops/:id', (req, res) => {
+app.delete('/api/habitaops/:id', requireApiKey, (req, res) => {
   const { id } = req.params;
   const result = deleteHabitaOpsReport(id);
   if (result.success) {
@@ -431,22 +462,7 @@ app.get('/api/reports/executive-summary', (req, res) => {
   });
 });
 
-// Endpoint administrativo para reiniciar la base de datos a 0 (inicio oficial)
-app.all('/api/admin/reset-database-zero', (req, res) => {
-  const confirm = req.query.confirm || (req.body && req.body.confirm);
-  if (confirm !== 'alsi2026') {
-    return res.status(403).json({
-      success: false,
-      message: 'Confirmación requerida. Envíe ?confirm=alsi2026 para proceder con el reinicio a 0.'
-    });
-  }
-  const clean = resetDbToZero();
-  res.json({
-    success: true,
-    message: 'Base de datos reiniciada exitosamente a 0 para inicio oficial de Condominio Portada Norte VII.',
-    db: clean
-  });
-});
+
 
 process.on('uncaughtException', (err) => {
   console.error('💥 Excepción no capturada en ALSI Server:', err.message);
