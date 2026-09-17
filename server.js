@@ -72,33 +72,6 @@ app.get('/api/whatsapp/status', (req, res) => {
   });
 });
 
-// Endpoint de diagnóstico directo para Gemini
-app.get('/api/gemini/test', async (req, res) => {
-  try {
-    const { processWithGemini } = require('./geminiEngine');
-    const msg = req.query.msg || "Hola buenas noches, soy Jorge Llanos y quiero los datos de transferencia";
-    const result = await processWithGemini({
-      message: msg,
-      history: [],
-      senderPhone: "+56977665544",
-      pushName: "Jorge Llanos"
-    });
-    res.json({ success: true, result });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message, stack: err.stack });
-  }
-});
-
-app.get('/api/gemini/models', async (req, res) => {
-  try {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-    const data = await r.json();
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 // Envío de mensaje personalizado de WhatsApp (integración con Ordena)
 app.post('/api/send-whatsapp', async (req, res) => {
