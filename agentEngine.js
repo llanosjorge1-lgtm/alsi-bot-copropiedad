@@ -171,6 +171,20 @@ async function executeTool(toolName, args) {
 }
 
 async function processMessage({ message, history = [], senderPhone = null, pushName = null }) {
+  // 0. VERIFICAR INTELIGENCIA CONVERSACIONAL CON GOOGLE GEMINI (HUMANIZACIÓN Y FUNCTION CALLING)
+  const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (geminiApiKey) {
+    try {
+      const { processWithGemini } = require('./geminiEngine');
+      const geminiResult = await processWithGemini({ message, history, senderPhone, pushName });
+      if (geminiResult && geminiResult.active && geminiResult.reply) {
+        return geminiResult;
+      }
+    } catch (geminiError) {
+      console.error('⚠️ Error en Gemini Engine, recurriendo al motor de respaldo local:', geminiError.message);
+    }
+  }
+
   const textLower = message.toLowerCase();
   const condoName = "Condominio Portada Norte VII";
   const adminEmail = "contactoalsiadministracion@gmail.com";
@@ -641,5 +655,9 @@ async function processMessage({ message, history = [], senderPhone = null, pushN
 module.exports = {
   processMessage,
   executeTool,
-  ALSI_CONFIG
+  ALSI_CONFIG,
+  MEETING_SLOTS,
+  getNextBusinessDays,
+  formatBusinessDate,
+  getAvailableSlots
 };

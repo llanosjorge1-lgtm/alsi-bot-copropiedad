@@ -47,15 +47,29 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/webhook/instagram', verifyInstagramWebhook);
 app.post('/webhook/instagram', handleInstagramWebhook);
 
-// Estado de WhatsApp & QR
+// Estado de WhatsApp & QR con estado de IA y n8n
 app.get('/api/status', (req, res) => {
   const status = getWhatsAppStatus();
-  res.json(status);
+  const hasGemini = !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY);
+  const hasN8n = !!process.env.N8N_WEBHOOK_URL;
+  res.json({
+    ...status,
+    aiEngine: hasGemini ? `Google Gemini (${process.env.GEMINI_MODEL || 'gemini-1.5-flash'})` : 'Motor Determinista Local (Fallback Activo)',
+    geminiConfigured: hasGemini,
+    n8nConfigured: hasN8n
+  });
 });
 
 app.get('/api/whatsapp/status', (req, res) => {
   const status = getWhatsAppStatus();
-  res.json(status);
+  const hasGemini = !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY);
+  const hasN8n = !!process.env.N8N_WEBHOOK_URL;
+  res.json({
+    ...status,
+    aiEngine: hasGemini ? `Google Gemini (${process.env.GEMINI_MODEL || 'gemini-1.5-flash'})` : 'Motor Determinista Local (Fallback Activo)',
+    geminiConfigured: hasGemini,
+    n8nConfigured: hasN8n
+  });
 });
 
 // Envío de mensaje personalizado de WhatsApp (integración con Ordena)
