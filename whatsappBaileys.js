@@ -155,15 +155,13 @@ async function connectToWhatsApp(forceClean = false) {
 
         const remoteJid = msg.key.remoteJid;
 
-        // FILTRO ESTRICTO: El bot SOLO atiende chats directos individuales (1 a 1).
-        // Ignora por completo grupos (@g.us), listas de difusión (@broadcast), canales (@newsletter),
-        // o cualquier mensaje con 'participant' (indicador inequívoco de chat de más de 2 personas).
+        // FILTRO ANTI-GRUPOS: El bot atiende únicamente conversaciones privadas 1 a 1.
+        // Ignora por completo grupos de WhatsApp (@g.us), listas de difusión (@broadcast) y canales (@newsletter).
+        // Permite con total normalidad chats individuales tanto en formato estándar (@s.whatsapp.net) como multi-dispositivo (@lid).
         const isGroupOrBroadcast = !remoteJid ||
           remoteJid.endsWith('@g.us') ||
           remoteJid.endsWith('@broadcast') ||
-          remoteJid.endsWith('@newsletter') ||
-          Boolean(msg.key.participant) ||
-          !remoteJid.endsWith('@s.whatsapp.net');
+          remoteJid.endsWith('@newsletter');
 
         if (isGroupOrBroadcast) {
           continue;
@@ -176,11 +174,17 @@ async function connectToWhatsApp(forceClean = false) {
 
         if (!textMessage.trim()) continue;
 
-        const rawPhone = remoteJid.replace('@s.whatsapp.net', '');
+        let rawPhone = remoteJid.replace('@s.whatsapp.net', '').replace('@lid', '');
+        if (msg.key.participant && msg.key.participant.includes('@s.whatsapp.net')) {
+          const participantPhone = msg.key.participant.replace('@s.whatsapp.net', '');
+          if (/^\d{8,15}$/.test(participantPhone)) {
+            rawPhone = participantPhone;
+          }
+        }
         const senderPhone = rawPhone.startsWith('+') ? rawPhone : `+${rawPhone}`;
         const pushName = msg.pushName || 'Residente ALSI';
 
-        console.log(`📩 Mensaje entrante WhatsApp ALSI de [${senderPhone}] (${pushName}): "${textMessage}"`);
+        console.log(`📩 Mensaje entrante WhatsApp ALSI de [${senderPhone}] (${pushName}) [JID: ${remoteJid}]: "${textMessage}"`);
 
         const history = getSessionHistory(remoteJid);
         const result = await processMessage({
