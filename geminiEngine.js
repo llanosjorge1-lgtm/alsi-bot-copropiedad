@@ -38,7 +38,9 @@ LIBRERÍA OFICIAL DE DOCUMENTOS (PLATAFORMA ORDENA):
   * Actas de Asambleas & Acuerdos de Comité
   * Pólizas de Seguro & Certificaciones
   * Contratos de Trabajo & Anexos
-- Si un residente pregunta por reglamentos, protocolos de convivencia, certificados, organigrama o documentos del condominio, DEBES invocar la herramienta 'consultarDocumentosOficiales'. Luego, ofrécele un resumen cordial y bríndale el enlace directo oficial a la plataforma ORDENA (https://ordena-t0bg.onrender.com/).
+- Si un residente pregunta por reglamentos, protocolos de convivencia, organigrama o documentos del condominio, DEBES invocar la herramienta 'consultarDocumentosOficiales'. Luego, ofrécele un resumen cordial y bríndale el enlace directo oficial a la plataforma ORDENA (https://ordena-t0bg.onrender.com/).
+- SOLICITUD DE CERTIFICADOS OFICIALES (RESIDENCIA, LIBRE DEUDA, PAGO CONCILIADO):
+Si el residente solicita un CERTIFICADO DE RESIDENCIA (Ley 21.442), CERTIFICADO DE LIBRE DEUDA o CERTIFICADO DE PAGO CONCILIADO, estos son generados y emitidos formalmente por la Administración en la plataforma ORDENA con firma digital y folio oficial. DEBES invocar la herramienta 'solicitarCertificado' con el tipo de certificado, departamento y nombre. Si no ha indicado el RUT o el departamento, pídeselo cordialmente para que Administración lo emita de inmediato.
 
 USO DE HERRAMIENTAS (FUNCTION CALLING):
 Dispones de herramientas para realizar acciones reales en el sistema del condominio:
@@ -46,8 +48,9 @@ Dispones de herramientas para realizar acciones reales en el sistema del condomi
 2. 'agendarReunion': Úsala cuando el residente desee coordinar una reunión y se cuente con: Nombre completo, Departamento, Día y Bloque Horario (ID de 1 a 11), y motivo. Si falta algún dato, pídelo amablemente antes de agendar. Al agendarse, el sistema generará automáticamente un Pase QR Digital oficial y lo registrará en Google Calendar y n8n.
 3. 'reportarIncidencia': Úsala cuando el residente reporte una avería técnica (portón, bombas de agua, piscina, tolvas de basura, cámaras CCTV), falta de conserje, ruidos molestos u otra anomalía. Si involucra filtración de agua o riesgo de seguridad, asígnale prioridad "Alta" o "Urgente".
 4. 'obtenerDatosBancarios': Úsala cuando soliciten la cuenta para pagar gastos comunes o transferencias.
-5. 'consultarDocumentosOficiales': Úsala cuando pregunten por reglamentos, protocolos, certificados, normas o documentación en ORDENA.
-6. 'cancelarReunion': Úsala cuando un residente necesite anular su cita previamente coordinada.`;
+5. 'consultarDocumentosOficiales': Úsala cuando pregunten por reglamentos, protocolos, normas o documentación general en ORDENA.
+6. 'solicitarCertificado': Úsala cuando soliciten un Certificado de Residencia (Ley 21.442), Certificado de Libre Deuda o Certificado de Pago para ser emitido por Administración en ORDENA.
+7. 'cancelarReunion': Úsala cuando un residente necesite anular su cita previamente coordinada.`;
 
 const GEMINI_TOOLS = [
   {
@@ -116,6 +119,24 @@ const GEMINI_TOOLS = [
               description: "Término de búsqueda o tema del documento solicitado (ej: reglamento, protocolo, cargos, organigrama, convivencia, actas, seguros, o 'todos')." 
             }
           }
+        }
+      },
+      {
+        name: "solicitarCertificado",
+        description: "Gestiona y registra formalmente una solicitud de certificado oficial (Certificado de Residencia Ley 21.442, Certificado de Libre Deuda de Gastos Comunes o Certificado Oficial de Pago Conciliado) para ser emitido por Administración a través de la plataforma ORDENA con firma digital y folio oficial.",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            tipoCertificado: {
+              type: "STRING",
+              description: "Tipo de certificado: 'Residencia' (Certificado de Residencia Ley 21.442), 'Libre Deuda' (Gastos Comunes al Día), o 'Pago' (Certificado Oficial de Pago Registrado y Conciliado)."
+            },
+            nombre: { type: "STRING", description: "Nombre completo del titular o residente solicitante" },
+            depto: { type: "STRING", description: "Número de departamento o unidad (ej: Depto 302, Torre A)" },
+            rut: { type: "STRING", description: "RUT del residente (ej: 12.345.678-9)" },
+            fines: { type: "STRING", description: "Fines o destinatario del certificado (ej: banco, notaría, juzgado, trámite personal)" }
+          },
+          required: ["tipoCertificado"]
         }
       },
       {
@@ -499,6 +520,68 @@ async function executeGeminiTool(functionName, args, context = {}) {
       totalDocumentos: searchResult.allDocumentsCount || searchResult.totalDocuments || docs.length,
       adjuntoListo: !!docAttachment,
       instruccion: "Explica amablemente al residente los documentos o carpetas correspondientes disponibles y bríndale el enlace oficial a la plataforma ORDENA (https://ordena-t0bg.onrender.com/) para que pueda consultarlos o descargarlos directamente."
+    };
+  }
+
+  if (functionName === 'solicitarCertificado') {
+    const { tipoCertificado, nombre, depto, rut, fines } = args;
+    const tipo = tipoCertificado || 'Residencia';
+    const deptInfo = depto || 'Por especificar';
+    const nomInfo = nombre || (context.pushName && !context.pushName.toLowerCase().includes('user') ? context.pushName : 'Residente');
+    const ticketId = `CERT-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    const db = readDb();
+    if (!db.incidents) db.incidents = [];
+
+    const newIncident = {
+      id: ticketId,
+      condoName,
+      clientName: nomInfo,
+      unitNumber: deptInfo,
+      description: `[SOLICITUD DE CERTIFICADO DE ${tipo.toUpperCase()}] Residente: ${nomInfo} | RUT: ${rut || 'Por validar'} | Depto: ${deptInfo} | Destino/Fines: ${fines || 'Trámites generales'}. Tramitar y emitir en plataforma ORDENA con firma digital bajo Ley 21.442.`,
+      fullText: `Solicitud oficial de Certificado de ${tipo} tramitado vía WhatsApp/Chat ALSI. Requiere emisión formal en ORDENA.`,
+      status: "Pendiente",
+      priority: "Normal",
+      adminEmail,
+      industry: 'alsi',
+      createdAt: new Date().toISOString()
+    };
+    db.incidents.unshift(newIncident);
+    writeDb(db);
+
+    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
+    if (n8nWebhookUrl) {
+      try {
+        fetch(n8nWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: 'CERTIFICATE_REQUESTED',
+            emailSubject: `solicitud de certificado de ${tipo} - Depto ${deptInfo} - ${ticketId}`,
+            ticketId,
+            condoName,
+            clientName: nomInfo,
+            unitNumber: deptInfo,
+            certificateType: tipo,
+            rut: rut || 'No informado',
+            fines: fines || 'General',
+            description: newIncident.description,
+            adminEmail
+          })
+        }).catch(err => console.error("Error despachando certificado a n8n:", err.message));
+      } catch (e) {}
+    }
+
+    return {
+      success: true,
+      ticketId,
+      tipoCertificado: tipo,
+      depto: deptInfo,
+      nombre: nomInfo,
+      rut: rut || null,
+      fines: fines || null,
+      mensaje: `Solicitud de Certificado de ${tipo} registrada y despachada a Administración ALSI en la plataforma ORDENA.`,
+      instruccion: `Informa cordialmente al residente que su solicitud de Certificado de ${tipo} ha sido registrada con el ticket ${ticketId} y comunicada a Administración en la plataforma ORDENA. Explica que Administración valida los antecedentes de la unidad ${deptInfo} en ORDENA y emitirá el certificado oficial timbrado con firma digital bajo la Ley 21.442 para hacérselo llegar a la brevedad. Si faltan datos como su RUT o número de departamento, pídeselos amablemente.`
     };
   }
 

@@ -711,6 +711,85 @@ async function processMessage({ message, history = [], senderPhone = null, pushN
     };
   }
 
+  // VERIFICAR SI SOLICITA UN CERTIFICADO OFICIAL (RESIDENCIA, LIBRE DEUDA, PAGO)
+  const isCertReq = textLower.includes('certificado') || 
+                    textLower.includes('residencia') || 
+                    textLower.includes('libre deuda') || 
+                    textLower.includes('al día') || 
+                    textLower.includes('al dia') || 
+                    textLower.includes('paz y salvo');
+
+  if (isCertReq) {
+    let tipoCert = 'Residencia';
+    if (textLower.includes('libre deuda') || textLower.includes('al día') || textLower.includes('al dia') || textLower.includes('deuda')) {
+      tipoCert = 'Libre Deuda';
+    } else if (textLower.includes('pago') || textLower.includes('conciliado') || textLower.includes('comprobante')) {
+      tipoCert = 'Pago Registrado y Conciliado';
+    }
+
+    const ticketId = `CERT-${Math.floor(100000 + Math.random() * 900000)}`;
+    const nomRes = clientName || 'Residente Copropietario';
+    const deptRes = unitNumber && unitNumber !== 'Por Especificar' ? unitNumber : 'Por Confirmar';
+
+    // Registrar en incidencias de ALSI para que aparezca de inmediato en el panel de Ordena
+    try {
+      const db = readDb();
+      if (!db.incidents) db.incidents = [];
+      db.incidents.unshift({
+        id: ticketId,
+        condoName,
+        clientName: nomRes,
+        unitNumber: deptRes,
+        description: `[SOLICITUD DE CERTIFICADO DE ${tipoCert.toUpperCase()}] Residente: ${nomRes} | Depto: ${deptRes}. Generar y emitir documento oficial en plataforma ORDENA con firma digital (Ley 21.442).`,
+        status: "Pendiente",
+        priority: "Normal",
+        adminEmail,
+        industry: 'alsi',
+        createdAt: new Date().toISOString()
+      });
+      writeDb(db);
+    } catch (e) {}
+
+    // Despacho a n8n si está configurado
+    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
+    if (n8nWebhookUrl) {
+      try {
+        fetch(n8nWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: 'CERTIFICATE_REQUESTED',
+            emailSubject: `solicitud de certificado de ${tipoCert} - Depto ${deptRes} - ${ticketId}`,
+            ticketId,
+            clientName: nomRes,
+            unitNumber: deptRes,
+            certificateType: tipoCert,
+            adminEmail
+          })
+        }).catch(() => {});
+      } catch (e) {}
+    }
+
+    const responseText = `¡${greetingTime}! Estimado/a${finalNameTag}, le saluda su Asistente Virtual de ALSI Administración para Condominio Portada Norte VII 🏢✨.\n\n` +
+      `✅ **Hemos registrado su solicitud de Certificado de ${tipoCert}** (Ticket: \`${ticketId}\`).\n\n` +
+      `📄 **Emisión Oficial vía Plataforma ORDENA (Ley 21.442)**:\n` +
+      `Los certificados oficiales son emitidos directamente por la Administración a través de nuestro sistema centralizado **ORDENA**, con folio correlativo único, membrete institucional y firma digital certificada.\n\n` +
+      `📌 **Para agilizar la emisión y entrega de su certificado, por favor indíquenos**:\n` +
+      `• 1️⃣ **Nombre completo del titular o residente**\n` +
+      `• 2️⃣ **RUT del titular**\n` +
+      `• 3️⃣ **Número de departamento y torre** (ej: Depto 302, Torre B)\n` +
+      `• 4️⃣ **Fines o institución de destino** (ej: banco, notaría, subsidio, juzgado, trámite personal)\n\n` +
+      `La administración procesará y emitirá su certificado a través de ORDENA para hacérselo llegar a su WhatsApp o correo electrónico. ¡Estamos a su entera disposición!`;
+
+    return {
+      reply: responseText,
+      toolExecuted: { name: 'solicitarCertificado', result: { ticketId, tipoCert, deptRes } },
+      voucher: null,
+      industry: 'alsi',
+      greeting: ALSI_CONFIG.greeting
+    };
+  }
+
   // VERIFICAR SI CONSULTA POR REGLAMENTOS, PROTOCOLOS O DOCUMENTOS (ORDENA)
   const isDocReq = textLower.includes('reglamento') || 
                    textLower.includes('protocolo') || 
