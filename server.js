@@ -89,6 +89,17 @@ app.get('/api/gemini/test', async (req, res) => {
   }
 });
 
+app.get('/api/gemini/models', async (req, res) => {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    const data = await r.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Envío de mensaje personalizado de WhatsApp (integración con Ordena)
 app.post('/api/send-whatsapp', async (req, res) => {
   try {
