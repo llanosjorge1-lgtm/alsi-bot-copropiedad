@@ -230,6 +230,33 @@ async function connectToWhatsApp(forceClean = false) {
               console.error("Error enviando imagen QR:", qrErr.message);
             }
           }
+
+          // Si hay un documento oficial de ORDENA para adjuntar en WhatsApp
+          if (result.documentToAttach && result.documentToAttach.fileData) {
+            try {
+              const base64Raw = result.documentToAttach.fileData.replace(/^data:[^;]+;base64,/, "");
+              const docBuffer = Buffer.from(base64Raw, 'base64');
+              const cleanName = (result.documentToAttach.nombre || 'Documento_Oficial').replace(/[/\\?%*:|"<>]/g, '_');
+              const fileExt = result.documentToAttach.tipo === 'word' ? 'docx' : 'pdf';
+              const fileName = `${cleanName}.${fileExt}`;
+              const mime = result.documentToAttach.tipo === 'word' 
+                ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+                : 'application/pdf';
+
+              await waSocket.sendMessage(remoteJid, {
+                document: docBuffer,
+                mimetype: mime,
+                fileName: fileName,
+                caption: `📄 *Documento Oficial - Condominio Portada Norte VII*\n\n` +
+                  `• Archivo: *${result.documentToAttach.nombre}*\n` +
+                  `• Plataforma: *Sistema ORDENA*\n\n` +
+                  `🌐 Puedes consultar la librería completa en: https://ordena-t0bg.onrender.com/`
+              });
+              console.log(`📄 Documento adjunto de ORDENA enviado exitosamente a [${senderPhone}]!`);
+            } catch (docErr) {
+              console.error("Error enviando documento de ORDENA por WhatsApp:", docErr.message);
+            }
+          }
         }
       }
     } catch (err) {

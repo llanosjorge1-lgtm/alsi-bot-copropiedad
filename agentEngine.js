@@ -711,6 +711,44 @@ async function processMessage({ message, history = [], senderPhone = null, pushN
     };
   }
 
+  // VERIFICAR SI CONSULTA POR REGLAMENTOS, PROTOCOLOS O DOCUMENTOS (ORDENA)
+  const isDocReq = textLower.includes('reglamento') || 
+                   textLower.includes('protocolo') || 
+                   textLower.includes('documento') || 
+                   textLower.includes('organigrama') || 
+                   textLower.includes('acta') || 
+                   textLower.includes('estatuto') || 
+                   textLower.includes('normativa') ||
+                   textLower.includes('manual');
+
+  if (isDocReq) {
+    const { searchLibrary } = require('./ordenaService');
+    let docData = null;
+    try {
+      docData = await searchLibrary(textLower);
+    } catch (e) {}
+
+    const foldersList = (docData && docData.folders && docData.folders.length > 0)
+      ? docData.folders.slice(0, 6).map(f => `• 📁 **${f.nombre}**`).join('\n')
+      : `• 📁 **Reglamento de Copropiedad & Ley 21.442**\n• 📁 **Descriptores de Cargo & Protocolos**\n• 📁 **Organigrama del Condominio**\n• 📁 **Reglamento Interno 2011**\n• 📁 **Actas de Asambleas & Acuerdos de Comité**`;
+
+    const responseText = `¡${greetingTime}! Estimado/a${finalNameTag}, le saluda su Asistente Virtual de ALSI Administración para Condominio Portada Norte VII 🏢✨.\n\n` +
+      `Con mucho gusto le informamos que todos los reglamentos oficiales, protocolos de convivencia y documentos del condominio están disponibles en nuestra plataforma **ORDENA**:\n\n` +
+      `📚 **Carpetas Oficiales Disponibles**:\n` +
+      foldersList + `\n\n` +
+      `🌐 **Librería de Documentos Oficiales en Línea**:\n` +
+      `👉 https://ordena-t0bg.onrender.com/\n\n` +
+      `Allí podrá consultar o descargar libremente la documentación comunitaria vigente. Si tiene alguna consulta puntual sobre un reglamento, con gusto le orientamos.`;
+
+    return {
+      reply: responseText,
+      toolExecuted: { name: 'consultarDocumentosOficiales', result: docData },
+      voucher: null,
+      industry: 'alsi',
+      greeting: ALSI_CONFIG.greeting
+    };
+  }
+
   // RESPUESTA DE SALUDO CORDIAL (SIN MENÚ RÍGIDO)
   const defaultReply = `¡${greetingTime}! Estimado/a${finalNameTag}, le saluda su Asistente Virtual de ALSI Administración para Condominio Portada Norte VII 🏢✨.\n\n¿En qué le podemos ayudar hoy?`;
 

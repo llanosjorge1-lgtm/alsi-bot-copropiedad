@@ -28,13 +28,26 @@ CALENDARIO OFICIAL Y FERIADOS IRRENUNCIABLES (CHILE):
   * Titular: Condominio Portada Siete
   * Correo para comprobante: contactoalsiadministracion@gmail.com con copia a portadadelnortevii@gmail.com (indicando siempre número de departamento y torre).
 
+LIBRERÍA OFICIAL DE DOCUMENTOS (PLATAFORMA ORDENA):
+- Portal Web Oficial: https://ordena-t0bg.onrender.com/
+- En ORDENA se encuentra la librería de documentos oficiales del Condominio Portada Norte VII:
+  * Reglamento de Copropiedad y Ley 21.442
+  * Descriptores de Cargo & Protocolos (conserjería, aseo, mantención)
+  * Organigrama del Condominio
+  * Reglamento Interno 2011 y Normas de Convivencia (ruidos molestos, uso de áreas comunes, mascotas)
+  * Actas de Asambleas & Acuerdos de Comité
+  * Pólizas de Seguro & Certificaciones
+  * Contratos de Trabajo & Anexos
+- Si un residente pregunta por reglamentos, protocolos de convivencia, certificados, organigrama o documentos del condominio, DEBES invocar la herramienta 'consultarDocumentosOficiales'. Luego, ofrécele un resumen cordial y bríndale el enlace directo oficial a la plataforma ORDENA (https://ordena-t0bg.onrender.com/).
+
 USO DE HERRAMIENTAS (FUNCTION CALLING):
 Dispones de herramientas para realizar acciones reales en el sistema del condominio:
 1. 'consultarHorariosDisponibles': Úsala cuando el residente pregunte qué horarios o días hay disponibles para reunirse.
 2. 'agendarReunion': Úsala cuando el residente desee coordinar una reunión y se cuente con: Nombre completo, Departamento, Día y Bloque Horario (ID de 1 a 11), y motivo. Si falta algún dato, pídelo amablemente antes de agendar. Al agendarse, el sistema generará automáticamente un Pase QR Digital oficial y lo registrará en Google Calendar y n8n.
 3. 'reportarIncidencia': Úsala cuando el residente reporte una avería técnica (portón, bombas de agua, piscina, tolvas de basura, cámaras CCTV), falta de conserje, ruidos molestos u otra anomalía. Si involucra filtración de agua o riesgo de seguridad, asígnale prioridad "Alta" o "Urgente".
 4. 'obtenerDatosBancarios': Úsala cuando soliciten la cuenta para pagar gastos comunes o transferencias.
-5. 'cancelarReunion': Úsala cuando un residente necesite anular su cita previamente coordinada.`;
+5. 'consultarDocumentosOficiales': Úsala cuando pregunten por reglamentos, protocolos, certificados, normas o documentación en ORDENA.
+6. 'cancelarReunion': Úsala cuando un residente necesite anular su cita previamente coordinada.`;
 
 const GEMINI_TOOLS = [
   {
@@ -91,6 +104,19 @@ const GEMINI_TOOLS = [
       {
         name: "obtenerDatosBancarios",
         description: "Entrega los datos de transferencia bancaria de la cuenta corriente de Banco Santander para pago de gastos comunes."
+      },
+      {
+        name: "consultarDocumentosOficiales",
+        description: "Consulta la librería oficial de documentos, reglamentos de copropiedad, protocolos de convivencia, organigrama y actas de Condominio Portada Norte VII en la plataforma ORDENA.",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            tema: { 
+              type: "STRING", 
+              description: "Término de búsqueda o tema del documento solicitado (ej: reglamento, protocolo, cargos, organigrama, convivencia, actas, seguros, o 'todos')." 
+            }
+          }
+        }
       },
       {
         name: "cancelarReunion",
@@ -444,6 +470,38 @@ async function executeGeminiTool(functionName, args, context = {}) {
     };
   }
 
+  if (functionName === 'consultarDocumentosOficiales') {
+    const { searchLibrary, fetchDocumentDetail } = require('./ordenaService');
+    const searchResult = await searchLibrary(args.tema || '');
+
+    // Si el usuario pidió un documento específico y coincide exactamente
+    let docAttachment = null;
+    const cleanTema = (args.tema || '').toLowerCase();
+    const docs = searchResult.matchedDocuments || searchResult.documents || [];
+    if (docs.length === 1 && (cleanTema.includes('enviar') || cleanTema.includes('mandar') || cleanTema.includes('descargar') || cleanTema.includes('pdf'))) {
+      const docDetail = await fetchDocumentDetail(docs[0].id);
+      if (docDetail && docDetail.file_data) {
+        docAttachment = {
+          id: docDetail.id,
+          nombre: docDetail.nombre,
+          tipo: docDetail.tipo_archivo || 'pdf',
+          fileData: docDetail.file_data
+        };
+        context.documentToAttach = docAttachment;
+      }
+    }
+
+    return {
+      success: true,
+      portalUrl: searchResult.portalUrl,
+      carpetasOficiales: searchResult.matchedFolders || searchResult.folders || [],
+      documentosPublicados: docs,
+      totalDocumentos: searchResult.allDocumentsCount || searchResult.totalDocuments || docs.length,
+      adjuntoListo: !!docAttachment,
+      instruccion: "Explica amablemente al residente los documentos o carpetas correspondientes disponibles y bríndale el enlace oficial a la plataforma ORDENA (https://ordena-t0bg.onrender.com/) para que pueda consultarlos o descargarlos directamente."
+    };
+  }
+
   return { success: false, mensaje: "Herramienta no implementada." };
 }
 
@@ -676,6 +734,7 @@ async function processWithGemini({ message, history = [], senderPhone = null, pu
               reply: fullText,
               toolExecuted: { name: call.name, result: toolResult },
               voucher: context.generatedVoucher,
+              documentToAttach: context.documentToAttach || null,
               industry: 'alsi'
             };
           }
@@ -698,6 +757,15 @@ async function processWithGemini({ message, history = [], senderPhone = null, pu
           `• \`${toolResult.correoEnvioComprobante}\`\n` +
           `• Con copia a: \`${toolResult.correoCopia}\`\n\n` +
           `⚠️ *Importante*: Indicar siempre el **número de departamento y torre** en el asunto del correo para asociar su pago oportunamente. ¡Muchas gracias!`;
+      } else if (call.name === 'consultarDocumentosOficiales') {
+        const folders = toolResult.carpetasOficiales || [];
+        const fList = folders.slice(0, 6).map(f => `• 📁 **${f.nombre}**`).join('\n');
+        fallbackText = `¡Estimado/a vecino/a! Todos los reglamentos, protocolos y documentación oficial del **Condominio Portada Norte VII** se encuentran centralizados en nuestra plataforma digital **ORDENA** 🏢📚:\n\n` +
+          `📚 **Carpetas Oficiales Disponibles**:\n` +
+          (fList || '• 📁 **Reglamento de Copropiedad & Ley 21.442**\n• 📁 **Descriptores de Cargo & Protocolos**\n• 📁 **Organigrama del Condominio**\n• 📁 **Reglamento Interno 2011**') + `\n\n` +
+          `🌐 **Acceda a la Librería Digital Oficial aquí**:\n` +
+          `👉 https://ordena-t0bg.onrender.com/\n\n` +
+          `Allí podrá consultar y descargar libremente los documentos vigentes.`;
       } else if (context.generatedVoucher) {
         fallbackText += `\n\n🎟️ Código de Pase QR: \`${context.generatedVoucher.code}\``;
       }
@@ -707,6 +775,7 @@ async function processWithGemini({ message, history = [], senderPhone = null, pu
         reply: fallbackText,
         toolExecuted: { name: call.name, result: toolResult },
         voucher: context.generatedVoucher,
+        documentToAttach: context.documentToAttach || null,
         industry: 'alsi'
       };
     }
