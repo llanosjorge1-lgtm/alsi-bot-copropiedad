@@ -444,7 +444,7 @@ async function processWithGemini({ message, history = [], senderPhone = null, pu
     if (!res.ok) {
       const errText = await res.text();
       console.error(`⚠️ Gemini API error (${res.status}):`, errText);
-      return { active: false, reason: `API_ERROR_${res.status}` };
+      return { active: false, reason: `API_ERROR_${res.status}`, errorDetails: errText };
     }
 
     const data = await res.json();
@@ -544,7 +544,7 @@ async function processWithGemini({ message, history = [], senderPhone = null, pu
     return { active: false, reason: "NO_USABLE_PART" };
   } catch (err) {
     console.error("💥 Error conectando con Gemini API:", err.message);
-    return { active: false, reason: err.message };
+    return { active: false, reason: err.message, errorDetails: err.stack };
   }
 }
 
