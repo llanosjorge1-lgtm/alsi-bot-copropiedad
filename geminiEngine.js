@@ -14,6 +14,12 @@ DATOS OPERATIVOS OFICIALES DE CONDOMINIO PORTADA NORTE VII:
 - Administrador: ALSI Administración Copropiedad (Representante: Jorge Llanos).
 - Correo oficial: contactoalsiadministracion@gmail.com (con copia a portadadelnortevii@gmail.com).
 - Horarios de reuniones de atención (presencial o virtual): Lunes a viernes en bloques de 30 minutos (09:00 a 13:00 hrs y 15:00 a 17:00 hrs). No se atiende fines de semana ni festivos.
+
+CALENDARIO OFICIAL Y FERIADOS IRRENUNCIABLES (CHILE):
+- FECHA ACTUAL: Miércoles 16 de septiembre de 2026.
+- MAÑANA JUEVES 17 DE SEPTIEMBRE: Es día hábil regular (horario de atención de 09:00 a 13:00 y 15:00 a 17:00 hrs). Si el residente solicita reunión para "mañana", "jueves" o "17 de septiembre", DEBES agendarla para el JUEVES 17 DE SEPTIEMBRE.
+- FERIADOS IRRENUNCIABLES DE FIESTAS PATRIAS: El viernes 18 y sábado 19 de septiembre son Feriados Irrenunciables en todo Chile. La administración se encuentra CERRADA. Está ESTRICTAMENTE PROHIBIDO agendar reuniones para el 18 o 19 de septiembre. Si un vecino menciona esas fechas, infórmale con amabilidad que son feriados irrenunciables y ofrécele mañana jueves 17 de septiembre o a partir del lunes 21 de septiembre.
+
 - Datos bancarios oficiales para Gastos Comunes:
   * Banco: Banco Santander
   * Tipo de cuenta: Cuenta Corriente
@@ -102,28 +108,64 @@ const GEMINI_TOOLS = [
   }
 ];
 
-// Helper para obtener días hábiles y bloques horarios
+// Helper para obtener días hábiles y bloques horarios con soporte de feriados de Chile
 function getBusinessDateFromStr(diaStr) {
-  const { getNextBusinessDays, formatBusinessDate } = require('./agentEngine');
-  const days = getNextBusinessDays(5);
+  const { getNextBusinessDays, formatBusinessDate, isChileHoliday, getChileCalendarDate } = require('./agentEngine');
   const lower = (diaStr || '').toLowerCase();
+
+  // 1. Detección directa de feriados de Fiestas Patrias (18 y 19 de septiembre)
+  if (lower.includes('18 de sep') || (lower.includes('18') && !lower.includes('2018')) || (lower.includes('viernes') && !lower.includes('17'))) {
+    const sep18 = getChileCalendarDate(2);
+    return {
+      isHoliday: true,
+      holidayName: "Fiestas Patrias (Feriado Irrenunciable)",
+      formatted: "viernes 18 de septiembre",
+      dateObj: sep18
+    };
+  }
+
+  if (lower.includes('19 de sep') || lower.includes('19') || (lower.includes('sábado') && !lower.includes('17')) || (lower.includes('sabado') && !lower.includes('17'))) {
+    const sep19 = getChileCalendarDate(3);
+    return {
+      isHoliday: true,
+      holidayName: "Día de las Glorias del Ejército (Feriado Irrenunciable)",
+      formatted: "sábado 19 de septiembre",
+      dateObj: sep19
+    };
+  }
+
+  // 2. Si el usuario pide "mañana", "jueves" o "17"
+  if (lower.includes('mañana') || lower.includes('manana') || lower.includes('17') || lower.includes('jueves')) {
+    const tomorrow = getChileCalendarDate(1);
+    if (isChileHoliday(tomorrow)) {
+      return { 
+        isHoliday: true, 
+        holidayName: "Fiestas Patrias (Feriado Irrenunciable)", 
+        formatted: formatBusinessDate(tomorrow),
+        dateObj: tomorrow 
+      };
+    }
+    return { dateObj: tomorrow, formatted: formatBusinessDate(tomorrow) };
+  }
+
+  const days = getNextBusinessDays(5);
   
   const dayNames = ["domingo", "lunes", "martes", "miércoles", "miercoles", "jueves", "viernes", "sábado"];
   for (const d of days) {
-    const dName = dayNames[d.getDay()];
+    const dName = dayNames[d.getUTCDay()];
     if (lower.includes(dName) || (dName === 'miércoles' && lower.includes('miercoles'))) {
       return { dateObj: d, formatted: formatBusinessDate(d) };
     }
   }
 
   for (const d of days) {
-    const dayNum = String(d.getDate());
+    const dayNum = String(d.getUTCDate());
     if (new RegExp(`\\b${dayNum}\\b`).test(lower)) {
       return { dateObj: d, formatted: formatBusinessDate(d) };
     }
   }
 
-  // Por defecto el primer día hábil
+  // Por defecto el primer día hábil (mañana jueves 17 de septiembre)
   return { dateObj: days[0], formatted: formatBusinessDate(days[0]) };
 }
 
@@ -136,6 +178,18 @@ async function executeGeminiTool(functionName, args, context = {}) {
 
   if (functionName === 'consultarHorariosDisponibles') {
     const target = getBusinessDateFromStr(args.dia);
+    if (target.isHoliday) {
+      return {
+        success: false,
+        esFeriado: true,
+        dia: target.formatted,
+        mensaje: `El ${target.formatted} es feriado irrenunciable (${target.holidayName}) y la administración se encuentra cerrada.`,
+        siguienteDiaHabil: "lunes 21 de septiembre",
+        totalDisponibles: 0,
+        bloques: []
+      };
+    }
+
     let busySlots = [];
     try {
       busySlots = await fetchGoogleCalendarBusySlots(target.dateObj);
@@ -157,11 +211,20 @@ async function executeGeminiTool(functionName, args, context = {}) {
   if (functionName === 'agendarReunion') {
     const { nombre, depto, dia, bloqueId, motivo } = args;
     const target = getBusinessDateFromStr(dia);
+
+    if (target.isHoliday) {
+      return {
+        success: false,
+        esFeriado: true,
+        mensaje: `Estimado/a ${nombre}, el ${target.formatted} corresponde a ${target.holidayName} y la administración está cerrada por ser feriado irrenunciable. Con mucho gusto le podemos agendar para mañana jueves 17 de septiembre o a partir del lunes 21 de septiembre.`
+      };
+    }
+
     const slot = MEETING_SLOTS.find(s => s.id === parseInt(bloqueId, 10)) || MEETING_SLOTS[0];
 
-    const year = target.dateObj.getFullYear();
-    const month = String(target.dateObj.getMonth() + 1).padStart(2, '0');
-    const day = String(target.dateObj.getDate()).padStart(2, '0');
+    const year = target.dateObj.getUTCFullYear();
+    const month = String(target.dateObj.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(target.dateObj.getUTCDate()).padStart(2, '0');
 
     const startHStr = String(slot.hour).padStart(2, '0');
     const startMStr = String(slot.minute).padStart(2, '0');
@@ -231,7 +294,8 @@ async function executeGeminiTool(functionName, args, context = {}) {
             summary,
             adminEmail,
             qrCodeUrl: voucher.qrCodeDataUrl,
-            voucherCode: voucher.code
+            voucherCode: voucher.code,
+            condoName
           })
         }).catch(err => console.error("Error despachando reunión a n8n:", err.message));
       } catch (e) {}

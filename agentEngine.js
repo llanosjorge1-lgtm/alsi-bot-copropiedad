@@ -39,24 +39,58 @@ const MEETING_SLOTS = [
   { id: 11, label: "16:30 a 17:00 hrs", hour: 16, minute: 30, timeStr: "16:30", block: "TARDE" }
 ];
 
-function getNextBusinessDays(count = 3) {
+const CHILE_HOLIDAYS_2026 = [
+  '2026-01-01', // Año Nuevo
+  '2026-04-03', // Viernes Santo
+  '2026-04-04', // Sábado Santo
+  '2026-05-01', // Día del Trabajo (Irrenunciable)
+  '2026-05-21', // Glorias Navales
+  '2026-06-21', // Pueblos Indígenas
+  '2026-06-29', // San Pedro y San Pablo
+  '2026-07-16', // Virgen del Carmen
+  '2026-08-15', // Asunción de la Virgen
+  '2026-09-18', // Fiestas Patrias (Feriado Irrenunciable)
+  '2026-09-19', // Glorias del Ejército (Feriado Irrenunciable)
+  '2026-09-20', // Domingo Fiestas Patrias
+  '2026-10-12', // Encuentro de Dos Mundos
+  '2026-10-31', // Iglesias Evangélicas
+  '2026-11-01', // Todos los Santos
+  '2026-12-08', // Inmaculada Concepción
+  '2026-12-25', // Navidad (Feriado Irrenunciable)
+];
+
+function getChileCalendarDate(offsetDays = 0) {
+  const todayChile = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date());
+  const [y, m, d] = todayChile.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + offsetDays, 12, 0, 0));
+}
+
+function isChileHoliday(dateObj) {
+  const iso = dateObj.toISOString().slice(0, 10);
+  return CHILE_HOLIDAYS_2026.includes(iso);
+}
+
+function getNextBusinessDays(count = 5) {
   const days = [];
-  const date = new Date();
-  while (days.length < count) {
-    date.setDate(date.getDate() + 1);
-    if (date.getDay() !== 0 && date.getDay() !== 6) {
-      days.push(new Date(date));
+  let offset = 1;
+  while (days.length < count && offset < 50) {
+    const dt = getChileCalendarDate(offset);
+    const dayOfWeek = dt.getUTCDay();
+    const iso = dt.toISOString().slice(0, 10);
+    if (dayOfWeek !== 0 && dayOfWeek !== 6 && !CHILE_HOLIDAYS_2026.includes(iso)) {
+      days.push(dt);
     }
+    offset++;
   }
   return days;
 }
 
 function formatBusinessDate(dateObj) {
-  const dayNum = dateObj.getDate();
+  const dayNum = dateObj.getUTCDate();
   const monthNames = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
   const dayNames = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
-  const dayOfWeek = dayNames[dateObj.getDay()];
-  const monthName = monthNames[dateObj.getMonth()];
+  const dayOfWeek = dayNames[dateObj.getUTCDay()];
+  const monthName = monthNames[dateObj.getUTCMonth()];
   return `${dayOfWeek} ${dayNum} de ${monthName}`;
 }
 
@@ -64,9 +98,9 @@ function getAvailableSlots(targetDate, externalBusySlots = []) {
   const db = readDb();
   const appointments = db.appointments || [];
 
-  const year = targetDate.getFullYear();
-  const month = targetDate.getMonth() + 1;
-  const day = targetDate.getDate();
+  const year = targetDate.getUTCFullYear();
+  const month = targetDate.getUTCMonth() + 1;
+  const day = targetDate.getUTCDate();
 
   const padMonth = String(month).padStart(2, '0');
   const padDay = String(day).padStart(2, '0');
@@ -244,7 +278,7 @@ async function processMessage({ message, history = [], senderPhone = null, pushN
   // 1. Prioridad absoluta: lo que el residente escribió en este mensaje
   for (const bDay of businessDays) {
     const dayNames = ["domingo", "lunes", "martes", "miércoles", "miercoles", "jueves", "viernes", "sábado"];
-    const bDayName = dayNames[bDay.getDay()];
+    const bDayName = dayNames[bDay.getUTCDay()];
     if (textLower.includes(bDayName) || (bDayName === 'miércoles' && textLower.includes('miercoles'))) {
       targetBusinessDate = bDay;
       targetFormatted = formatBusinessDate(bDay);
@@ -255,7 +289,7 @@ async function processMessage({ message, history = [], senderPhone = null, pushN
 
   if (!matchedByDayName) {
     for (const bDay of businessDays) {
-      const dayNumStr = String(bDay.getDate());
+      const dayNumStr = String(bDay.getUTCDate());
       const regexDayNum = new RegExp(`(?:el|día|dia|de|para)?\\s*\\b${dayNumStr}\\b`);
       if (regexDayNum.test(textLower)) {
         targetBusinessDate = bDay;
@@ -554,9 +588,9 @@ async function processMessage({ message, history = [], senderPhone = null, pushN
 
       const calendarSummary = `Reunión: ${finalName} - Depto ${unitNumber} - Asunto: ${meetingReason}`;
 
-      const year = targetBusinessDate.getFullYear();
-      const month = String(targetBusinessDate.getMonth() + 1).padStart(2, '0');
-      const day = String(targetBusinessDate.getDate()).padStart(2, '0');
+      const year = targetBusinessDate.getUTCFullYear();
+      const month = String(targetBusinessDate.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(targetBusinessDate.getUTCDate()).padStart(2, '0');
       const hStr = String(matchedSlot.hour).padStart(2, '0');
       const mStr = String(matchedSlot.minute).padStart(2, '0');
 
@@ -696,5 +730,8 @@ module.exports = {
   MEETING_SLOTS,
   getNextBusinessDays,
   formatBusinessDate,
-  getAvailableSlots
+  getAvailableSlots,
+  isChileHoliday,
+  getChileCalendarDate,
+  CHILE_HOLIDAYS_2026
 };
