@@ -76,8 +76,7 @@ const GEMINI_TOOLS = [
             descripcion: { type: "STRING", description: "Detalle descriptivo del problema o falla" },
             prioridad: { 
               type: "STRING", 
-              enum: ["Normal", "Alta", "Urgente"], 
-              description: "Nivel de urgencia de la incidencia (filtraciones o cortes de agua deben ser Alta o Urgente)" 
+              description: "Nivel de urgencia de la incidencia (Normal, Alta o Urgente. Filtraciones o emergencias deben ser Alta o Urgente)" 
             }
           },
           required: ["nombre", "depto", "descripcion"]
@@ -85,11 +84,7 @@ const GEMINI_TOOLS = [
       },
       {
         name: "obtenerDatosBancarios",
-        description: "Entrega los datos de transferencia bancaria de la cuenta corriente de Banco Santander para pago de gastos comunes.",
-        parameters: {
-          type: "OBJECT",
-          properties: {}
-        }
+        description: "Entrega los datos de transferencia bancaria de la cuenta corriente de Banco Santander para pago de gastos comunes."
       },
       {
         name: "cancelarReunion",
@@ -99,7 +94,8 @@ const GEMINI_TOOLS = [
           properties: {
             depto: { type: "STRING", description: "Número de departamento" },
             nombre: { type: "STRING", description: "Nombre del residente" }
-          }
+          },
+          required: ["depto"]
         }
       }
     ]
@@ -394,8 +390,9 @@ async function processWithGemini({ message, history = [], senderPhone = null, pu
     return { active: false, reason: "NO_API_KEY" };
   }
 
-  const model = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const candidateModels = [process.env.GEMINI_MODEL, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'].filter(Boolean);
+  // Eliminar duplicados
+  const modelsToTry = [...new Set(candidateModels)];
 
   // Formatear historial asegurando alternancia user -> model -> user
   const contents = [];
@@ -435,16 +432,36 @@ async function processWithGemini({ message, history = [], senderPhone = null, pu
   const context = { senderPhone, pushName, generatedVoucher: null };
 
   try {
-    const res = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    let res = null;
+    let chosenModel = modelsToTry[0];
+    let errText = '';
 
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error(`⚠️ Gemini API error (${res.status}):`, errText);
-      return { active: false, reason: `API_ERROR_${res.status}`, errorDetails: errText };
+    for (const m of modelsToTry) {
+      chosenModel = m;
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`;
+      res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        break; // Éxito con este modelo
+      }
+
+      errText = await res.text();
+      if (res.status === 404) {
+        console.warn(`Modelo Gemini '${m}' no disponible (404), probando siguiente...`);
+        continue;
+      } else {
+        // Otro error (ej: 400, 403, 429)
+        break;
+      }
+    }
+
+    if (!res || !res.ok) {
+      console.error(`⚠️ Gemini API error (${res?.status}):`, errText);
+      return { active: false, reason: `API_ERROR_${res?.status}`, errorDetails: errText, attemptedModel: chosenModel };
     }
 
     const data = await res.json();
@@ -492,7 +509,8 @@ async function processWithGemini({ message, history = [], senderPhone = null, pu
       };
 
       try {
-        const followUpRes = await fetch(apiUrl, {
+        const followUpApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${chosenModel}:generateContent?key=${apiKey}`;
+        const followUpRes = await fetch(followUpApiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(followUpPayload)
