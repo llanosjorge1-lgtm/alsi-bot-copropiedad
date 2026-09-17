@@ -470,11 +470,11 @@ async function processWithGemini({ message, history = [], senderPhone = null, pu
       return { active: false, reason: "EMPTY_GEMINI_RESPONSE" };
     }
 
-    const firstPart = candidate.content.parts[0];
+    const functionCallPart = candidate.content.parts.find(p => p.functionCall);
 
     // Verificar si Gemini decidió invocar una función (Tool Calling)
-    if (firstPart.functionCall) {
-      const call = firstPart.functionCall;
+    if (functionCallPart) {
+      const call = functionCallPart.functionCall;
       console.log(`🤖 Gemini invocó Tool: ${call.name} con args:`, JSON.stringify(call.args));
 
       const toolResult = await executeGeminiTool(call.name, call.args, context);
@@ -484,7 +484,7 @@ async function processWithGemini({ message, history = [], senderPhone = null, pu
         ...contents,
         {
           role: 'model',
-          parts: [{ functionCall: call }]
+          parts: candidate.content.parts
         },
         {
           role: 'function',
@@ -518,11 +518,12 @@ async function processWithGemini({ message, history = [], senderPhone = null, pu
 
         if (followUpRes.ok) {
           const followUpData = await followUpRes.json();
-          const followUpPart = followUpData.candidates?.[0]?.content?.parts?.[0];
-          if (followUpPart && followUpPart.text) {
+          const parts = followUpData.candidates?.[0]?.content?.parts || [];
+          const fullText = parts.filter(p => p.text).map(p => p.text).join('\n').trim();
+          if (fullText) {
             return {
               active: true,
-              reply: followUpPart.text,
+              reply: fullText,
               toolExecuted: { name: call.name, result: toolResult },
               voucher: context.generatedVoucher,
               industry: 'alsi'
@@ -535,7 +536,19 @@ async function processWithGemini({ message, history = [], senderPhone = null, pu
 
       // Respuesta de respaldo si la segunda llamada no responde
       let fallbackText = toolResult.mensaje || "Operación realizada exitosamente.";
-      if (context.generatedVoucher) {
+      if (call.name === 'obtenerDatosBancarios') {
+        fallbackText = `¡Estimado/a vecino/a! Con mucho gusto le compartimos los datos oficiales para la transferencia de gastos comunes de **Condominio Portada Norte VII** 🏢✨:\n\n` +
+          `• 🏦 **Banco**: ${toolResult.banco}\n` +
+          `• 📋 **Tipo de Cuenta**: ${toolResult.tipoCuenta}\n` +
+          `• 🔢 **Número de Cuenta**: \`${toolResult.numeroCuenta}\`\n` +
+          `• 🆔 **RUT**: \`${toolResult.rut}\`\n` +
+          `• 👤 **Titular**: **${toolResult.titular}**\n\n` +
+          `📧 **Envío de Comprobante**:\n` +
+          `Una vez efectuada la transferencia, por favor envíe el comprobante a:\n` +
+          `• \`${toolResult.correoEnvioComprobante}\`\n` +
+          `• Con copia a: \`${toolResult.correoCopia}\`\n\n` +
+          `⚠️ *Importante*: Indicar siempre el **número de departamento y torre** en el asunto del correo para asociar su pago oportunamente. ¡Muchas gracias!`;
+      } else if (context.generatedVoucher) {
         fallbackText += `\n\n🎟️ Código de Pase QR: \`${context.generatedVoucher.code}\``;
       }
 
@@ -549,10 +562,11 @@ async function processWithGemini({ message, history = [], senderPhone = null, pu
     }
 
     // Respuesta textual estándar de Gemini
-    if (firstPart.text) {
+    const allText = candidate.content.parts.filter(p => p.text).map(p => p.text).join('\n').trim();
+    if (allText) {
       return {
         active: true,
-        reply: firstPart.text,
+        reply: allText,
         toolExecuted: null,
         voucher: null,
         industry: 'alsi'
