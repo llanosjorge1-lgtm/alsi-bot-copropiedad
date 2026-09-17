@@ -177,14 +177,39 @@ async function connectToWhatsApp(forceClean = false) {
           pushName
         });
 
-        if (result && result.reply) {
-          updateSessionHistory(remoteJid, textMessage, result.reply);
+        if (result && (result.reply || result.introMessage)) {
+          // Si hay mensaje inicial de saludo y presentación (Mensaje 1)
+          if (result.introMessage) {
+            try {
+              await waSocket.sendMessage(remoteJid, { text: result.introMessage });
+              console.log(`📤 Mensaje 1 (Saludo/Presentación) enviado a [${senderPhone}]!`);
 
-          try {
-            await waSocket.sendMessage(remoteJid, { text: result.reply });
-            console.log(`📤 Respuesta enviada por WhatsApp ALSI a [${senderPhone}]!`);
-          } catch (sendErr) {
-            console.error(`Error enviando mensaje de texto a [${senderPhone}]:`, sendErr.message);
+              // Simular estado "escribiendo..." de WhatsApp durante la pausa
+              try {
+                await waSocket.sendPresenceUpdate('composing', remoteJid);
+              } catch (pErr) {}
+
+              const waitMs = typeof result.delayMs === 'number' ? result.delayMs : 5000;
+              await new Promise(resolve => setTimeout(resolve, waitMs));
+
+              try {
+                await waSocket.sendPresenceUpdate('paused', remoteJid);
+              } catch (pErr) {}
+            } catch (introErr) {
+              console.error(`Error enviando mensaje 1 a [${senderPhone}]:`, introErr.message);
+            }
+          }
+
+          // Mensaje 2 (Detalles / Respuesta principal)
+          if (result.reply) {
+            updateSessionHistory(remoteJid, textMessage, result.reply);
+
+            try {
+              await waSocket.sendMessage(remoteJid, { text: result.reply });
+              console.log(`📤 Mensaje 2 (Detalles) enviado por WhatsApp ALSI a [${senderPhone}]!`);
+            } catch (sendErr) {
+              console.error(`Error enviando mensaje 2 a [${senderPhone}]:`, sendErr.message);
+            }
           }
 
           const qrData = result.voucher?.qrCodeDataUrl || result.voucher?.qrDataUrl;

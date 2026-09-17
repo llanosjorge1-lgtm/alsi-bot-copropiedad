@@ -383,11 +383,97 @@ async function executeGeminiTool(functionName, args, context = {}) {
   return { success: false, mensaje: "Herramienta no implementada." };
 }
 
+function getTimeOfDayGreeting() {
+  const now = new Date();
+  try {
+    const chileHourStr = new Intl.DateTimeFormat('es-CL', {
+      hour: 'numeric',
+      hour12: false,
+      timeZone: 'America/Santiago'
+    }).format(now);
+    const hour = parseInt(chileHourStr, 10);
+    if (hour >= 6 && hour < 12) return "Buenos días";
+    if (hour >= 12 && hour < 20) return "Buenas tardes";
+    return "Buenas noches";
+  } catch (e) {
+    const h = (now.getUTCHours() - 3 + 24) % 24;
+    if (h >= 6 && h < 12) return "Buenos días";
+    if (h >= 12 && hour < 20) return "Buenas tardes";
+    return "Buenas noches";
+  }
+}
+
+function extractResidentName(message, pushName) {
+  if (message) {
+    const m = message.match(/(?:soy|me llamo|mi nombre es)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ]+(?:\s+[A-Za-zÁÉÍÓÚáéíóúñÑ]+)?)/i);
+    if (m && m[1]) return m[1].trim();
+  }
+  if (pushName && typeof pushName === 'string') {
+    const clean = pushName.trim();
+    if (clean && !clean.toLowerCase().includes('user') && !clean.toLowerCase().includes('whatsapp') && clean.length >= 3) {
+      return clean;
+    }
+  }
+  return null;
+}
+
+function isPureGreeting(text) {
+  const clean = (text || '').toLowerCase().trim().replace(/[!¡?¿.,]/g, '');
+  const greetings = ['hola', 'buenas', 'buenos dias', 'buenas tardes', 'buenas noches', 'hola buenas', 'hola buenas tardes', 'hola buenas noches', 'hola buenos dias', 'saludos', 'hola que tal', 'buen dia', 'buen día'];
+  return greetings.includes(clean);
+}
+
 // Procesa el mensaje conversacional utilizando Google Gemini
 async function processWithGemini({ message, history = [], senderPhone = null, pushName = null }) {
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   if (!apiKey) {
     return { active: false, reason: "NO_API_KEY" };
+  }
+
+  const greeting = getTimeOfDayGreeting();
+  const resName = extractResidentName(message, pushName);
+  const nameTag = resName ? ` **${resName}**` : '';
+
+  // Si el residente solo envía un saludo general sin consultar nada en particular
+  if (isPureGreeting(message)) {
+    return {
+      active: true,
+      reply: `¡${greeting}! Estimado/a${nameTag}, le saluda su Asistente Virtual de ALSI Administración para Condominio Portada Norte VII 🏢✨.\n\n¿En qué le podemos ayudar hoy?`,
+      toolExecuted: null,
+      voucher: null,
+      industry: 'alsi'
+    };
+  }
+
+  const msgLower = (message || '').toLowerCase();
+  const isTransferReq = msgLower.includes('transferencia') || 
+                        msgLower.includes('bancari') || 
+                        msgLower.includes('santander') ||
+                        (msgLower.includes('datos') && (msgLower.includes('cuenta') || msgLower.includes('pagar') || msgLower.includes('gasto') || msgLower.includes('transferir'))) ||
+                        (msgLower.includes('cuenta') && (msgLower.includes('pagar') || msgLower.includes('transferir'))) ||
+                        (msgLower.includes('gasto') && (msgLower.includes('pagar') || msgLower.includes('cuenta') || msgLower.includes('donde')));
+
+  if (isTransferReq) {
+    const bankDetails = await executeGeminiTool('obtenerDatosBancarios', {}, { senderPhone, pushName });
+    return {
+      active: true,
+      introMessage: `¡${greeting}! Estimado/a${nameTag}, le saluda su Asistente Virtual de ALSI Administración para Condominio Portada Norte VII 🏢✨.\n\nCon mucho gusto, en breve le comparto los datos oficiales para realizar su transferencia bancaria.`,
+      delayMs: 5000,
+      reply: `Aquí tiene los datos para realizar la transferencia:\n` +
+        `🏛️ **Banco:** Banco Santander\n` +
+        `📋 **Tipo de Cuenta:** Cuenta Corriente\n` +
+        `🔢 **Número de Cuenta:** 6346927-0\n` +
+        `🆔 **RUT:** 53.313.111-5\n` +
+        `👤 **Titular:** Condominio Portada Siete\n\n` +
+        `Por favor, recuerde enviar el comprobante de su transferencia a:\n` +
+        `📧 \ncontactoalsiadministracion@gmail.com\n\n` +
+        `Con copia a: \nportadadelnortevii@gmail.com\n\n` +
+        `Es muy importante que en el asunto o cuerpo del correo indique siempre su número de departamento y torre para poder asociar correctamente su pago.\n\n` +
+        `Si tiene alguna otra consulta, no dude en preguntar.`,
+      toolExecuted: { name: 'obtenerDatosBancarios', result: bankDetails },
+      voucher: null,
+      industry: 'alsi'
+    };
   }
 
   const candidateModels = [process.env.GEMINI_MODEL, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'].filter(Boolean);

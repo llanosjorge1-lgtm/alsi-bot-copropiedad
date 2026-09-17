@@ -634,21 +634,58 @@ async function processMessage({ message, history = [], senderPhone = null, pushN
     }
   }
 
-  // RESPUESTA POR DEFECTO CON EL SALUDO INICIAL Y EL MENÚ OFICIAL
-  const nameTag = clientName ? `@${clientName}` : 'Residente';
-  const defaultReply = `¡Hola **${nameTag}**! Buenas tardes 🏢✨ Te damos la bienvenida al canal de atención de ALSI Administración exclusivo para Condominio Portada Norte VII, Por favor indícanos en qué te podemos ayudar hoy:\n\n` +
-    `• 1️⃣ **Coordinación de reunión**\n` +
-    `• 2️⃣ **Cancelación de reunión**\n` +
-    `• 3️⃣ **Reprogramación de reunión**\n` +
-    `• 4️⃣ **Reporte de incidencia**\n` +
-    `• 5️⃣ **Datos de transferencia bancaria**`;
+  // VERIFICAR SI PIDE DATOS DE TRANSFERENCIA BANCARIA
+  const isBankTransfer = textLower.includes('transferencia') || 
+                         textLower.includes('bancari') || 
+                         textLower.includes('santander') ||
+                         (textLower.includes('datos') && (textLower.includes('cuenta') || textLower.includes('pagar') || textLower.includes('gasto') || textLower.includes('transferir'))) ||
+                         (textLower.includes('cuenta') && (textLower.includes('pagar') || textLower.includes('transferir'))) ||
+                         (textLower.includes('gasto') && (textLower.includes('pagar') || textLower.includes('cuenta')));
+
+  const finalNameTag = clientName ? ` **${clientName}**` : '';
+  let greetingTime = "Buenas tardes";
+  try {
+    const chileHourStr = new Intl.DateTimeFormat('es-CL', {
+      hour: 'numeric',
+      hour12: false,
+      timeZone: 'America/Santiago'
+    }).format(new Date());
+    const hour = parseInt(chileHourStr, 10);
+    if (hour >= 6 && hour < 12) greetingTime = "Buenos días";
+    else if (hour >= 12 && hour < 20) greetingTime = "Buenas tardes";
+    else greetingTime = "Buenas noches";
+  } catch (e) {}
+
+  if (isBankTransfer) {
+    return {
+      introMessage: `¡${greetingTime}! Estimado/a${finalNameTag}, le saluda su Asistente Virtual de ALSI Administración para Condominio Portada Norte VII 🏢✨.\n\nCon mucho gusto, en breve le comparto los datos oficiales para realizar su transferencia bancaria.`,
+      delayMs: 5000,
+      reply: `Aquí tiene los datos para realizar la transferencia:\n` +
+        `🏛️ **Banco:** Banco Santander\n` +
+        `📋 **Tipo de Cuenta:** Cuenta Corriente\n` +
+        `🔢 **Número de Cuenta:** 6346927-0\n` +
+        `🆔 **RUT:** 53.313.111-5\n` +
+        `👤 **Titular:** Condominio Portada Siete\n\n` +
+        `Por favor, recuerde enviar el comprobante de su transferencia a:\n` +
+        `📧 \ncontactoalsiadministracion@gmail.com\n\n` +
+        `Con copia a: \nportadadelnortevii@gmail.com\n\n` +
+        `Es muy importante que en el asunto o cuerpo del correo indique siempre su número de departamento y torre para poder asociar correctamente su pago.\n\n` +
+        `Si tiene alguna otra consulta, no dude en preguntar.`,
+      toolExecuted: { name: 'obtenerDatosBancarios' },
+      voucher: null,
+      industry: 'alsi'
+    };
+  }
+
+  // RESPUESTA DE SALUDO CORDIAL (SIN MENÚ RÍGIDO)
+  const defaultReply = `¡${greetingTime}! Estimado/a${finalNameTag}, le saluda su Asistente Virtual de ALSI Administración para Condominio Portada Norte VII 🏢✨.\n\n¿En qué le podemos ayudar hoy?`;
 
   return {
     reply: defaultReply,
     toolExecuted: null,
     voucher: null,
     industry: 'alsi',
-    greeting: ALSI_CONFIG.greeting
+    greeting: defaultReply
   };
 }
 
