@@ -154,7 +154,20 @@ async function connectToWhatsApp(forceClean = false) {
         if (!msg.message || msg.key.fromMe) continue;
 
         const remoteJid = msg.key.remoteJid;
-        if (!remoteJid || remoteJid.endsWith('@g.us')) continue;
+
+        // FILTRO ESTRICTO: El bot SOLO atiende chats directos individuales (1 a 1).
+        // Ignora por completo grupos (@g.us), listas de difusión (@broadcast), canales (@newsletter),
+        // o cualquier mensaje con 'participant' (indicador inequívoco de chat de más de 2 personas).
+        const isGroupOrBroadcast = !remoteJid ||
+          remoteJid.endsWith('@g.us') ||
+          remoteJid.endsWith('@broadcast') ||
+          remoteJid.endsWith('@newsletter') ||
+          Boolean(msg.key.participant) ||
+          !remoteJid.endsWith('@s.whatsapp.net');
+
+        if (isGroupOrBroadcast) {
+          continue;
+        }
 
         const textMessage = msg.message.conversation ||
           msg.message.extendedTextMessage?.text ||
