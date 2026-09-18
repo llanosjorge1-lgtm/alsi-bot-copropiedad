@@ -248,6 +248,36 @@ async function connectToWhatsApp(forceClean = false) {
             }
           }
 
+          // Si se generó un Pase de Visita QR oficial de ORDENA para la conserjería
+          const visitPass = result.visitPass;
+          const visitQrData = visitPass?.qrCodeDataUrl || visitPass?.qrDataUrl;
+          if (visitPass && visitQrData) {
+            try {
+              const base64Data = visitQrData.replace(/^data:image\/\w+;base64,/, "");
+              const buffer = Buffer.from(base64Data, 'base64');
+              const vehiculoTexto = visitPass.hasVehicle 
+                ? `🚗 *Vehículo*: Patente *${visitPass.vehiclePlate}*` 
+                : `🚶 *Acceso*: Peatonal`;
+              const acompTexto = visitPass.companionsCount > 0 
+                ? `\n👥 *Acompañantes*: ${visitPass.companionsCount} personas` 
+                : '';
+
+              await waSocket.sendMessage(remoteJid, {
+                image: buffer,
+                caption: `🎟️ *PASE OFICIAL DE VISITA - PORTADA NORTE VII*\n\n` +
+                  `• 🔑 *Código*: *${visitPass.token}*\n` +
+                  `• 🏢 *Departamento*: *${visitPass.department}*\n` +
+                  `• 👤 *Visita*: *${visitPass.visitorName}* (${visitPass.visitorRut})\n` +
+                  `• ${vehiculoTexto}${acompTexto}\n` +
+                  `• ⏳ *Validez*: 12 horas desde su emisión\n\n` +
+                  `📲 *Reenvía este código QR a tu visita para que lo exhiba al conserje en portería al ingresar.* 🏢✨`
+              });
+              console.log(`🖼️ Pase de Visita QR oficial enviado con éxito por WhatsApp a [${senderPhone}]!`);
+            } catch (vQrErr) {
+              console.error("Error enviando imagen QR de pase de visita por WhatsApp:", vQrErr.message);
+            }
+          }
+
           // Si hay un documento oficial de ORDENA para adjuntar en WhatsApp
           if (result.documentToAttach && result.documentToAttach.fileData) {
             try {

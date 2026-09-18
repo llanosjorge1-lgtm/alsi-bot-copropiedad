@@ -3,7 +3,20 @@
   "vouchers": [],
   "clients": [],
   "pendingRequests": [],
-  "incidents": [],
+  "incidents": [
+    {
+      "id": "CERT-671214",
+      "condoName": "Condominio Portada Norte VII",
+      "clientName": "Carlos Perez",
+      "unitNumber": "304",
+      "description": "[SOLICITUD DE CERTIFICADO DE RESIDENCIA] Residente: Carlos Perez | Depto: 304. Generar y emitir documento oficial en plataforma ORDENA con firma digital (Ley 21.442).",
+      "status": "Pendiente",
+      "priority": "Normal",
+      "adminEmail": "contactoalsiadministracion@gmail.com",
+      "industry": "alsi",
+      "createdAt": "2026-09-17T02:18:04.447Z"
+    }
+  ],
   "receipts": [],
   "habitaOpsReports": [],
   "settings": {

@@ -155,10 +155,72 @@ async function searchLibrary(searchTerm = '') {
   };
 }
 
+/**
+ * Solicita la creación de un Pase de Visita con Código QR en ORDENA
+ */
+async function solicitarPaseVisitaOrdena({
+  condo_code = 'CPN7',
+  department,
+  visitor_name,
+  visitor_rut,
+  has_vehicle = false,
+  vehicle_plate = '',
+  companions = [],
+  valid_hours = 12,
+  host_name = '',
+  host_phone = ''
+}) {
+  try {
+    const res = await fetch(`${ORDENA_BASE_URL}/api/alsi/solicitar-pase-visita`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        condo_code,
+        department,
+        visitor_name,
+        visitor_rut,
+        has_vehicle: !!has_vehicle,
+        vehicle_plate: vehicle_plate ? vehicle_plate.trim().toUpperCase() : '',
+        companions,
+        pass_type: 'visita',
+        valid_hours,
+        host_name,
+        host_phone
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      return {
+        success: false,
+        error: data.error || `Error ${res.status} al conectar con ORDENA`
+      };
+    }
+
+    return {
+      success: true,
+      token: data.token,
+      pass: data.pass,
+      whatsappMessage: data.whatsappMessage,
+      portalUrl: `${ORDENA_BASE_URL}/pase?token=${data.token}`
+    };
+  } catch (err) {
+    console.error('[ORDENA] Error solicitando pase de visita:', err.message);
+    return {
+      success: false,
+      error: 'Error de comunicación con el servidor central de ORDENA: ' + err.message
+    };
+  }
+}
+
 module.exports = {
   ORDENA_BASE_URL,
   fetchLibraryFolders,
   fetchLibraryDocuments,
   fetchDocumentDetail,
-  searchLibrary
+  searchLibrary,
+  solicitarPaseVisitaOrdena
 };

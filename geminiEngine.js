@@ -42,6 +42,17 @@ LIBRERÍA OFICIAL DE DOCUMENTOS (PLATAFORMA ORDENA):
 - SOLICITUD DE CERTIFICADOS OFICIALES (RESIDENCIA, LIBRE DEUDA, PAGO CONCILIADO):
 Si el residente solicita un CERTIFICADO DE RESIDENCIA (Ley 21.442), CERTIFICADO DE LIBRE DEUDA o CERTIFICADO DE PAGO CONCILIADO, estos son generados y emitidos formalmente por la Administración en la plataforma ORDENA con firma digital y folio oficial. DEBES invocar la herramienta 'solicitarCertificado' con el tipo de certificado, departamento y nombre. Si no ha indicado el RUT o el departamento, pídeselo cordialmente para que Administración lo emita de inmediato.
 
+CONTROL DE ACCESOS Y PASES DE VISITA QR (PLATAFORMA ORDENA & CONSERJERÍA):
+Si el residente indica que recibirá una visita, solicita un pase de acceso, autorización de entrada a conserjería o un código QR para su visita:
+Por estrictas razones de seguridad de la comunidad y Ley 21.442, DEBES solicitar y validar SIEMPRE de forma obligatoria los siguientes datos:
+1. Departamento (ej: 304, 502, Torre A 201).
+2. Nombre y Apellido completo de la visita principal.
+3. RUT o DNI de la visita principal.
+4. ¿Viene en vehículo o acceso peatonal? En caso de ingresar en vehículo, la PATENTE VEHICULAR es ESTRICTAMENTE OBLIGATORIA (para asignación de estacionamiento de visitas del 1 al 18).
+5. Acompañantes: Si acude con acompañantes, solicita el nombre y RUT de cada uno. IMPORTANTE: Los menores de edad quedan expresamente exceptuados de indicar RUT, pero deben ser especificados como menores de edad.
+Si el residente no ha facilitado alguno de estos datos (por ejemplo, omitió el RUT o la patente al venir en auto), PÍDELOS amablemente antes de generar el pase.
+Cuando cuentes con la información requerida, DEBES invocar la herramienta 'solicitarPaseVisita'.
+
 USO DE HERRAMIENTAS (FUNCTION CALLING):
 Dispones de herramientas para realizar acciones reales en el sistema del condominio:
 1. 'consultarHorariosDisponibles': Úsala cuando el residente pregunte qué horarios o días hay disponibles para reunirse.
@@ -50,7 +61,8 @@ Dispones de herramientas para realizar acciones reales en el sistema del condomi
 4. 'obtenerDatosBancarios': Úsala cuando soliciten la cuenta para pagar gastos comunes o transferencias.
 5. 'consultarDocumentosOficiales': Úsala cuando pregunten por reglamentos, protocolos, normas o documentación general en ORDENA.
 6. 'solicitarCertificado': Úsala cuando soliciten un Certificado de Residencia (Ley 21.442), Certificado de Libre Deuda o Certificado de Pago para ser emitido por Administración en ORDENA.
-7. 'cancelarReunion': Úsala cuando un residente necesite anular su cita previamente coordinada.`;
+7. 'cancelarReunion': Úsala cuando un residente necesite anular su cita previamente coordinada.
+8. 'solicitarPaseVisita': Úsala cuando el residente solicite un Pase de Visita QR para el ingreso de personas al condominio, contando con Depto, Nombre, RUT, indicación de vehículo (patente) y acompañantes.`;
 
 const GEMINI_TOOLS = [
   {
@@ -149,6 +161,34 @@ const GEMINI_TOOLS = [
             nombre: { type: "STRING", description: "Nombre del residente" }
           },
           required: ["depto"]
+        }
+      },
+      {
+        name: "solicitarPaseVisita",
+        description: "Genera un Pase de Visita con Código QR oficial para el control de accesos y conserjería de Condominio Portada Norte VII en la plataforma ORDENA. Exige obligatoriamente: Departamento, Nombre y Apellido de la visita, RUT o DNI. Si acude en automóvil, la Patente vehicular es obligatoria. Si acude con acompañantes, exige registrar a cada uno con su RUT (exceptuando a los menores de edad).",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            departamento: { type: "STRING", description: "Número de departamento o unidad (ej: 304, 502, Torre B 102)" },
+            nombreVisita: { type: "STRING", description: "Nombre y apellido completo de la visita principal" },
+            rutVisita: { type: "STRING", description: "RUT o DNI de la visita principal (ej: 14.567.890-K)" },
+            vieneEnVehiculo: { type: "BOOLEAN", description: "True si la visita acude en automóvil/vehículo, False si es peatonal" },
+            patente: { type: "STRING", description: "Patente vehicular (obligatoria si vieneEnVehiculo es true, ej: AB-CD-12 o AB1234)" },
+            acompanantes: {
+              type: "ARRAY",
+              description: "Lista de acompañantes. Obligatorio RUT para mayores de edad; los menores deben indicarse como menores de edad.",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  nombre: { type: "STRING", description: "Nombre y apellido del acompañante" },
+                  rut: { type: "STRING", description: "RUT del acompañante (o 'Menor de edad' si aplica)" },
+                  esMenorDeEdad: { type: "BOOLEAN", description: "True si es menor de edad, False si es mayor de edad" }
+                },
+                required: ["nombre"]
+              }
+            }
+          },
+          required: ["departamento", "nombreVisita", "rutVisita", "vieneEnVehiculo"]
         }
       }
     ]
@@ -585,6 +625,106 @@ async function executeGeminiTool(functionName, args, context = {}) {
     };
   }
 
+  if (functionName === 'solicitarPaseVisita') {
+    const { departamento, nombreVisita, rutVisita, vieneEnVehiculo, patente, acompanantes } = args;
+    const { solicitarPaseVisitaOrdena } = require('./ordenaService');
+    const QRCode = require('qrcode');
+
+    // Validación estricta de requisitos de seguridad
+    if (!departamento || !nombreVisita || !rutVisita) {
+      return {
+        success: false,
+        faltaDatos: true,
+        mensaje: "Para generar el pase de visita se requiere obligatoriamente: Departamento, Nombre y Apellido de la visita, y RUT o DNI."
+      };
+    }
+
+    if (vieneEnVehiculo && (!patente || !patente.trim())) {
+      return {
+        success: false,
+        faltaPatente: true,
+        mensaje: "Si la visita acude en vehículo, la patente vehicular es estrictamente obligatoria según el reglamento de Portada Norte VII."
+      };
+    }
+
+    // Normalizar acompañantes (RUT obligatorio salvo menores)
+    const rawCompanions = Array.isArray(acompanantes) ? acompanantes : [];
+    const parsedCompanions = rawCompanions.map(c => ({
+      name: c.nombre || c.name || 'Acompañante',
+      rut: c.esMenorDeEdad ? 'Menor de edad' : (c.rut || 'No informado'),
+      is_minor: !!c.esMenorDeEdad
+    }));
+
+    const hostName = context.pushName && !context.pushName.toLowerCase().includes('user') 
+      ? context.pushName 
+      : `Residente Depto ${departamento}`;
+
+    const resOrdena = await solicitarPaseVisitaOrdena({
+      condo_code: 'CPN7',
+      department: departamento,
+      visitor_name: nombreVisita,
+      visitor_rut: rutVisita,
+      has_vehicle: !!vieneEnVehiculo,
+      vehicle_plate: patente ? patente.trim().toUpperCase() : '',
+      companions: parsedCompanions,
+      valid_hours: 12,
+      host_name: hostName,
+      host_phone: residentPhone
+    });
+
+    if (!resOrdena.success) {
+      return {
+        success: false,
+        error: resOrdena.error,
+        mensaje: `No se pudo registrar el pase en ORDENA: ${resOrdena.error}`
+      };
+    }
+
+    // Generar imagen QR DataURL en alta definición para WhatsApp
+    let qrDataUrl = null;
+    try {
+      qrDataUrl = await QRCode.toDataURL(resOrdena.token, {
+        width: 450,
+        margin: 2,
+        color: {
+          dark: '#0f172a',
+          light: '#ffffff'
+        }
+      });
+    } catch (qrErr) {
+      console.error("Error generando QR DataURL de visita:", qrErr.message);
+    }
+
+    const visitPassObj = {
+      token: resOrdena.token,
+      visitorName: nombreVisita,
+      visitorRut: rutVisita,
+      department: departamento,
+      hasVehicle: !!vieneEnVehiculo,
+      vehiclePlate: patente ? patente.trim().toUpperCase() : null,
+      companionsCount: parsedCompanions.length,
+      totalPeople: 1 + parsedCompanions.length,
+      qrCodeDataUrl: qrDataUrl,
+      portalUrl: resOrdena.portalUrl
+    };
+
+    context.generatedVisitPass = visitPassObj;
+
+    return {
+      success: true,
+      token: resOrdena.token,
+      visita: nombreVisita,
+      rut: rutVisita,
+      depto: departamento,
+      vehiculo: vieneEnVehiculo ? `Patente ${patente}` : 'Acceso Peatonal',
+      totalPersonas: 1 + parsedCompanions.length,
+      validoHoras: 12,
+      portalUrl: resOrdena.portalUrl,
+      whatsappMessage: resOrdena.whatsappMessage,
+      mensaje: `Pase de visita generado exitosamente en ORDENA con código ${resOrdena.token}.`
+    };
+  }
+
   return { success: false, mensaje: "Herramienta no implementada." };
 }
 
@@ -681,7 +821,7 @@ async function processWithGemini({ message, history = [], senderPhone = null, pu
     };
   }
 
-  const candidateModels = [process.env.GEMINI_MODEL, 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'].filter(Boolean);
+  const candidateModels = [process.env.GEMINI_MODEL, 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'].filter(Boolean);
   // Eliminar duplicados
   const modelsToTry = [...new Set(candidateModels)];
 
@@ -716,7 +856,7 @@ async function processWithGemini({ message, history = [], senderPhone = null, pu
     tools: GEMINI_TOOLS,
     generationConfig: {
       temperature: 0.4,
-      maxOutputTokens: 800
+      maxOutputTokens: 4096
     }
   };
 
@@ -795,7 +935,7 @@ async function processWithGemini({ message, history = [], senderPhone = null, pu
         contents: followUpContents,
         generationConfig: {
           temperature: 0.4,
-          maxOutputTokens: 800
+          maxOutputTokens: 4096
         }
       };
 
@@ -817,6 +957,7 @@ async function processWithGemini({ message, history = [], senderPhone = null, pu
               reply: fullText,
               toolExecuted: { name: call.name, result: toolResult },
               voucher: context.generatedVoucher,
+              visitPass: context.generatedVisitPass || null,
               documentToAttach: context.documentToAttach || null,
               industry: 'alsi'
             };
@@ -827,7 +968,7 @@ async function processWithGemini({ message, history = [], senderPhone = null, pu
       }
 
       // Respuesta de respaldo si la segunda llamada no responde
-      let fallbackText = toolResult.mensaje || "Operación realizada exitosamente.";
+      let fallbackText = toolResult.whatsappMessage || toolResult.mensaje || "Operación realizada exitosamente.";
       if (call.name === 'obtenerDatosBancarios') {
         fallbackText = `¡Estimado/a vecino/a! Con mucho gusto le compartimos los datos oficiales para la transferencia de gastos comunes de **Condominio Portada Norte VII** 🏢✨:\n\n` +
           `• 🏦 **Banco**: ${toolResult.banco}\n` +
@@ -851,6 +992,8 @@ async function processWithGemini({ message, history = [], senderPhone = null, pu
           `Allí podrá consultar y descargar libremente los documentos vigentes.`;
       } else if (context.generatedVoucher) {
         fallbackText += `\n\n🎟️ Código de Pase QR: \`${context.generatedVoucher.code}\``;
+      } else if (context.generatedVisitPass && !fallbackText.includes(context.generatedVisitPass.token)) {
+        fallbackText += `\n\n🎟️ Código de Pase QR: \`${context.generatedVisitPass.token}\``;
       }
 
       return {
@@ -858,6 +1001,7 @@ async function processWithGemini({ message, history = [], senderPhone = null, pu
         reply: fallbackText,
         toolExecuted: { name: call.name, result: toolResult },
         voucher: context.generatedVoucher,
+        visitPass: context.generatedVisitPass || null,
         documentToAttach: context.documentToAttach || null,
         industry: 'alsi'
       };

@@ -21,7 +21,8 @@ const ALSI_CONFIG = {
     `• 2️⃣ **Cancelación de reunión**\n` +
     `• 3️⃣ **Reprogramación de reunión**\n` +
     `• 4️⃣ **Reporte de incidencia**\n` +
-    `• 5️⃣ **Datos de transferencia bancaria**`
+    `• 5️⃣ **Datos de transferencia bancaria**\n` +
+    `• 6️⃣ **Pase de Visita con Código QR**`
 };
 
 // BLOQUES OFICIALES DE REUNIÓN DE LUNES A VIERNES (30 MINUTOS CADA UNO)
@@ -320,6 +321,27 @@ async function processMessage({ message, history = [], senderPhone = null, pushN
 
   const googleBusySlots = await fetchGoogleCalendarBusySlots(targetBusinessDate);
   const availableSlots = getAvailableSlots(targetBusinessDate, googleBusySlots);
+
+  const isVisitPassRequest = textLower.includes('pase') || 
+                             textLower.includes('visita') || 
+                             textLower.includes('invitado') || 
+                             textLower.includes('qr visita') || 
+                             textLower.includes('ingreso visita') ||
+                             textLower === '6';
+
+  if (isVisitPassRequest) {
+    return {
+      reply: `🎟️ *SOLICITUD DE PASE DE VISITA QR - PORTADA NORTE VII*\n\n` +
+        `Estimado/a vecino/a, para autorizar el ingreso seguro de su visita a través del sistema digital de conserjería, por favor facilítenos los siguientes datos obligatorios:\n\n` +
+        `1️⃣ *Número de Departamento* (ej: 402)\n` +
+        `2️⃣ *Nombre y Apellido de la visita principal*\n` +
+        `3️⃣ *RUT o DNI de la visita*\n` +
+        `4️⃣ *¿Ingresa en vehículo?* (Sí / No) ➔ Si la respuesta es Sí, la *Patente vehicular es obligatoria* para asignarle estacionamiento.\n` +
+        `5️⃣ *Acompañantes*: Indique nombre y RUT de acompañantes (los menores de edad quedan exceptuados de RUT).\n\n` +
+        `Apenas nos indique estos datos, le emitiremos su *Código QR oficial de acceso* de inmediato para que se lo comparta a su visita. 🏢🚗`,
+      industry: 'alsi'
+    };
+  }
 
   const isCancelRequest = textLower.includes('cancelar') || textLower.includes('anular') || textLower.includes('no podre') || textLower.includes('no podré') || textLower.includes('eliminar cita') || textLower.includes('eliminar reunion') || textLower.includes('eliminar reunión');
   const isRescheduleRequest = textLower.includes('reprogramar') || textLower.includes('cambiar hora') || textLower.includes('cambiar fecha') || textLower.includes('modificar cita') || textLower.includes('modificar reunion') || textLower.includes('modificar reunión');
