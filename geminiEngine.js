@@ -62,7 +62,8 @@ Dispones de herramientas para realizar acciones reales en el sistema del condomi
 5. 'consultarDocumentosOficiales': Úsala cuando pregunten por reglamentos, protocolos, normas o documentación general en ORDENA.
 6. 'solicitarCertificado': Úsala cuando soliciten un Certificado de Residencia (Ley 21.442), Certificado de Libre Deuda o Certificado de Pago para ser emitido por Administración en ORDENA.
 7. 'cancelarReunion': Úsala cuando un residente necesite anular su cita previamente coordinada.
-8. 'solicitarPaseVisita': Úsala cuando el residente solicite un Pase de Visita QR para el ingreso de personas al condominio, contando con Depto, Nombre, RUT, indicación de vehículo (patente) y acompañantes.`;
+8. 'solicitarPaseVisita': Úsala cuando el residente solicite un Pase de Visita QR para el ingreso de personas al condominio, contando con Depto, Nombre, RUT, indicación de vehículo (patente) y acompañantes.
+9. 'consultarGastoComun': Úsala cuando el residente pregunte cuánto debe de gasto común, el valor de la cuota del mes ($50.000 fijada por la administración) o su estado de morosidad. Si no ha indicado el departamento, pídeselo cordialmente antes de invocar la herramienta.`;
 
 const GEMINI_TOOLS = [
   {
@@ -189,6 +190,20 @@ const GEMINI_TOOLS = [
             }
           },
           required: ["departamento", "nombreVisita", "rutVisita", "vieneEnVehiculo"]
+        }
+      },
+      {
+        name: "consultarGastoComun",
+        description: "Consulta el estado de cuenta y valor del gasto común mensual ($50.000 cuota base) de un departamento en Condominio Portada Norte VII, incluyendo titular, deuda previa si tuviese, total a pagar y datos bancarios para transferir.",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            department: {
+              type: "STRING",
+              description: "Número o identificador del departamento (ej: A41, 101, B22, Torre A Depto 41)."
+            }
+          },
+          required: ["department"]
         }
       }
     ]
@@ -722,6 +737,45 @@ async function executeGeminiTool(functionName, args, context = {}) {
       portalUrl: resOrdena.portalUrl,
       whatsappMessage: resOrdena.whatsappMessage,
       mensaje: `Pase de visita generado exitosamente en ORDENA con código ${resOrdena.token}.`
+    };
+  }
+
+  if (functionName === 'consultarGastoComun') {
+    const { department } = args;
+    const { consultarGastoComunOrdena } = require('./ordenaService');
+
+    if (!department) {
+      return {
+        success: false,
+        faltaDepto: true,
+        mensaje: "Por favor indícame tu número de departamento o torre para consultar tu estado de cuenta de gasto común."
+      };
+    }
+
+    const resGc = await consultarGastoComunOrdena(department);
+    if (!resGc.success) {
+      return {
+        success: false,
+        mensaje: resGc.error || `No encontramos antecedentes para el departamento ${department}. La cuota base fijada es de $50.000.`
+      };
+    }
+
+    const d = resGc.data;
+    return {
+      success: true,
+      depto: d.depto,
+      torre: d.torre,
+      titular: d.titular,
+      cuotaMes: d.cuota_mes,
+      deudaAnterior: d.deuda_anterior,
+      totalAPagar: d.total_a_pagar,
+      estado: d.estado,
+      mesRendido: d.mes_rendido,
+      mesCobro: d.mes_cobro,
+      fechaVencimiento: d.fecha_vencimiento,
+      datosBancarios: d.datos_bancarios,
+      portalUrl: d.portal_url,
+      mensaje: `Gasto común consultado exitosamente en ORDENA para Depto ${d.depto} (${d.torre}). Copropietario: ${d.titular}. Cuota del mes: $${d.cuota_mes.toLocaleString('es-CL')} (cuota fija base). Deuda anterior por morosidad: $${d.deuda_anterior.toLocaleString('es-CL')}. Total a transferir: $${d.total_a_pagar.toLocaleString('es-CL')}. Fecha límite de pago: ${d.fecha_vencimiento}. Datos de transferencia: Banco Santander, Cta Corriente N° 6346927-0, RUT 53.313.111-5, contactoalsiadministracion@gmail.com.`
     };
   }
 

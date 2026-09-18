@@ -216,11 +216,44 @@ async function solicitarPaseVisitaOrdena({
   }
 }
 
+/**
+ * Consulta el estado de gasto común de un departamento en ORDENA ($50.000 cuota base)
+ */
+async function consultarGastoComunOrdena(department) {
+  try {
+    const cleanDepto = encodeURIComponent((department || '').trim());
+    const res = await fetch(`${ORDENA_BASE_URL}/api/gasto-comun/unidades/${cleanDepto}`, {
+      headers: { 'Accept': 'application/json' }
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      return {
+        success: false,
+        error: errData.error || `No pudimos encontrar registro para el departamento "${department}". Por favor verifica el número o torre.`
+      };
+    }
+
+    const data = await res.json();
+    return {
+      success: true,
+      data
+    };
+  } catch (err) {
+    console.error('[ORDENA] Error consultando gasto común:', err.message);
+    return {
+      success: false,
+      error: 'Error de comunicación con el servidor de ORDENA: ' + err.message
+    };
+  }
+}
+
 module.exports = {
   ORDENA_BASE_URL,
   fetchLibraryFolders,
   fetchLibraryDocuments,
   fetchDocumentDetail,
   searchLibrary,
-  solicitarPaseVisitaOrdena
+  solicitarPaseVisitaOrdena,
+  consultarGastoComunOrdena
 };
